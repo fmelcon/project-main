@@ -345,6 +345,10 @@ class FirebaseService {
    */
   private processGameStateChanges(gameState: FirebaseGameState) {
     console.log('🔄 Processing game state changes, version:', gameState.version);
+    console.log('🔍 DEBUG: gameState keys:', Object.keys(gameState));
+    console.log('🔍 DEBUG: doors data:', gameState.doors);
+    console.log('🔍 DEBUG: walls data:', gameState.walls);
+    console.log('🔍 DEBUG: drawingData:', gameState.drawingData);
     
     // Sincronizar tokens completos
     if (gameState.tokens) {
@@ -594,6 +598,29 @@ class FirebaseService {
         case 'walls_clear':
           const wallsRef = ref(this.database, `sessions/${this.currentSessionId}/gameState/walls`);
           await set(wallsRef, {});
+          break;
+          
+        case 'door_update':
+          const doorRef = ref(this.database, `sessions/${this.currentSessionId}/gameState/doors/${update.data.key}`);
+          await set(doorRef, update.data.door);
+          break;
+          
+        case 'wall_update':
+          const wallRef = ref(this.database, `sessions/${this.currentSessionId}/gameState/walls/${update.data.key}`);
+          await set(wallRef, update.data.wall);
+          break;
+          
+        case 'drawing_add':
+          const drawingRef = ref(this.database, `sessions/${this.currentSessionId}/gameState/drawingData`);
+          // Generar ID único para el dibujo
+          const drawingId = `drawing_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          const specificDrawingRef = ref(this.database, `sessions/${this.currentSessionId}/gameState/drawingData/${drawingId}`);
+          await set(specificDrawingRef, update.data);
+          break;
+          
+        case 'drawing_clear':
+          const clearDrawingRef = ref(this.database, `sessions/${this.currentSessionId}/gameState/drawingData`);
+          await set(clearDrawingRef, {});
           break;
           
         // Agregar más casos según necesidad

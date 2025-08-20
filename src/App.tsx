@@ -278,9 +278,11 @@ function App() {
     points: number[];
     color: string;
   }) => {
+    console.log('🎨 DEBUG: handleDrawing called with:', newDrawingData);
     setDrawingData([...drawingData, newDrawingData]);
     
     // Sincronizar con multijugador
+    console.log('🎨 DEBUG: Calling syncAddDrawing');
     multiplayerSync.syncAddDrawing(newDrawingData);
   };
 
@@ -317,6 +319,7 @@ function App() {
   };
 
   const handleDoorToggle = (x: number, y: number, type: 'horizontal' | 'vertical') => {
+    console.log('🚪 DEBUG: handleDoorToggle called:', x, y, type);
     const cellKey = `${x}-${y}`;
     const newDoors = new Map(doors);
     
@@ -337,6 +340,7 @@ function App() {
     setDoors(newDoors);
     
     // Sincronizar con multijugador
+    console.log('🚪 DEBUG: Calling syncUpdateDoor with:', cellKey, newDoors.get(cellKey));
     multiplayerSync.syncUpdateDoor(cellKey, newDoors.get(cellKey));
   };
 
