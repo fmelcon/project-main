@@ -203,6 +203,21 @@ class MultiplayerService {
     this.service.syncSelectedColorUpdate(color);
   }
 
+  syncFogEnabledUpdate(enabled: boolean): void {
+    console.log('🌫️ MultiplayerService.syncFogEnabledUpdate called:', enabled, 'Service type:', this.serviceName);
+    this.service.syncFogEnabledUpdate(enabled);
+  }
+
+  syncClearDoors(): void {
+    console.log('🚪 MultiplayerService.syncClearDoors called, Service type:', this.serviceName);
+    this.service.syncClearDoors();
+  }
+
+  syncClearWalls(): void {
+    console.log('🧱 MultiplayerService.syncClearWalls called, Service type:', this.serviceName);
+    this.service.syncClearWalls();
+  }
+
   /**
    * Getters
    */

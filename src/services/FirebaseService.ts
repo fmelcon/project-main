@@ -55,6 +55,7 @@ export interface FirebaseGameState {
   backgroundImage?: string;
   selectedTool?: string;
   selectedColor?: string;
+  fogEnabled?: boolean;
   version: number;
 }
 
@@ -209,6 +210,7 @@ class FirebaseService {
           gridType: 'square',
           selectedTool: 'move',
           selectedColor: '#000000',
+          fogEnabled: false,
           version: 1
         },
         createdAt: now,
@@ -422,6 +424,20 @@ class FirebaseService {
         timestamp: Date.now()
       });
     }
+    
+    // Sincronizar fog enabled
+    if (gameState.fogEnabled !== undefined) {
+      console.log('🌫️ Syncing fog enabled:', gameState.fogEnabled);
+      this.onGameUpdateCallback?.({
+        type: 'fog_enabled_update',
+        data: { fogEnabled: gameState.fogEnabled },
+        playerId: 'firebase-sync',
+        timestamp: Date.now()
+      });
+    }
+    
+    // NO sincronizar herramientas seleccionadas - cada jugador mantiene su propia selección
+    // Las herramientas son locales a cada jugador, solo se sincronizan las ACCIONES
   }
 
   /**
@@ -561,11 +577,26 @@ class FirebaseService {
         break;
         
       case 'selected_color_update':
-        const colorRef = ref(this.database, `sessions/${this.currentSessionId}/gameState/selectedColor`);
-        await set(colorRef, update.data.selectedColor);
-        break;
-        
-      // Agregar más casos según necesidad
+         const colorRef = ref(this.database, `sessions/${this.currentSessionId}/gameState/selectedColor`);
+         await set(colorRef, update.data.selectedColor);
+         break;
+         
+       case 'fog_enabled_update':
+          const fogEnabledRef = ref(this.database, `sessions/${this.currentSessionId}/gameState/fogEnabled`);
+          await set(fogEnabledRef, update.data.fogEnabled);
+          break;
+          
+        case 'doors_clear':
+          const doorsRef = ref(this.database, `sessions/${this.currentSessionId}/gameState/doors`);
+          await set(doorsRef, {});
+          break;
+          
+        case 'walls_clear':
+          const wallsRef = ref(this.database, `sessions/${this.currentSessionId}/gameState/walls`);
+          await set(wallsRef, {});
+          break;
+          
+        // Agregar más casos según necesidad
     }
     
     // Actualizar versión
@@ -661,6 +692,25 @@ class FirebaseService {
     console.log('🧹 Cleaned color data:', cleanColorData);
     
     this.sendGameUpdate({ type: 'selected_color_update', data: cleanColorData });
+  }
+
+  syncFogEnabledUpdate(enabled: boolean): void {
+    console.log('🌫️ FirebaseService.syncFogEnabledUpdate called:', enabled, 'Session:', this.currentSessionId);
+    
+    const cleanFogEnabledData = this.cleanFirebaseData({ fogEnabled: enabled });
+    console.log('🧹 Cleaned fog enabled data:', cleanFogEnabledData);
+    
+    this.sendGameUpdate({ type: 'fog_enabled_update', data: cleanFogEnabledData });
+  }
+
+  syncClearDoors(): void {
+    console.log('🚪 FirebaseService.syncClearDoors called, Session:', this.currentSessionId);
+    this.sendGameUpdate({ type: 'doors_clear', data: {} });
+  }
+
+  syncClearWalls(): void {
+    console.log('🧱 FirebaseService.syncClearWalls called, Session:', this.currentSessionId);
+    this.sendGameUpdate({ type: 'walls_clear', data: {} });
   }
 
   /**

@@ -514,24 +514,27 @@ const GridComponent: React.FC<GridComponentProps> = ({
 
   // Render walls
   const renderWalls = () => {
+    console.log('🧱 DEBUG: Rendering walls, count:', walls.size);
     const wallElements = [];
     
     walls.forEach((wall, key) => {
+      console.log('🧱 DEBUG: Rendering wall at', key, wall);
       const [x, y] = key.split('-').map(Number);
       
       if (wall.type === 'horizontal') {
         // Pared horizontal en el borde superior de la celda
         const wallStyle: React.CSSProperties = {
           width: `${CELL_SIZE}px`,
-          height: '4px',
+          height: '8px',
           backgroundColor: '#8B4513',
           position: 'absolute',
           left: `${x * CELL_SIZE}px`,
-          top: `${y * CELL_SIZE - 2}px`,
-          zIndex: 6,
+          top: `${y * CELL_SIZE - 4}px`,
+          zIndex: 15,
           pointerEvents: 'auto',
           cursor: 'pointer',
-          border: '1px solid #654321',
+          border: '2px solid #654321',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.5)',
         };
         
         wallElements.push(
@@ -545,16 +548,17 @@ const GridComponent: React.FC<GridComponentProps> = ({
       } else if (wall.type === 'vertical') {
         // Pared vertical en el borde izquierdo de la celda
         const wallStyle: React.CSSProperties = {
-          width: '4px',
+          width: '8px',
           height: `${CELL_SIZE}px`,
           backgroundColor: '#8B4513',
           position: 'absolute',
-          left: `${x * CELL_SIZE - 2}px`,
+          left: `${x * CELL_SIZE - 4}px`,
           top: `${y * CELL_SIZE}px`,
-          zIndex: 6,
+          zIndex: 15,
           pointerEvents: 'auto',
           cursor: 'pointer',
-          border: '1px solid #654321',
+          border: '2px solid #654321',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.5)',
         };
         
         wallElements.push(
@@ -573,30 +577,33 @@ const GridComponent: React.FC<GridComponentProps> = ({
 
   // Render doors
   const renderDoors = () => {
+    console.log('🚪 DEBUG: Rendering doors, count:', doors.size);
     const doorElements = [];
     
     doors.forEach((door, key) => {
+      console.log('🚪 DEBUG: Rendering door at', key, door);
       const [x, y] = key.split('-').map(Number);
       
       if (door.type === 'horizontal') {
         // Puerta horizontal en el borde superior de la celda
         const doorStyle: React.CSSProperties = {
           width: `${CELL_SIZE}px`,
-          height: '6px',
-          backgroundColor: door.isOpen ? '#4CAF50' : '#8B4513',
+          height: '10px',
+          backgroundColor: door.isOpen ? '#4CAF50' : '#D2691E',
           position: 'absolute',
           left: `${x * CELL_SIZE}px`,
-          top: `${y * CELL_SIZE - 3}px`,
-          zIndex: 7,
+          top: `${y * CELL_SIZE - 5}px`,
+          zIndex: 20,
           pointerEvents: 'auto',
           cursor: 'pointer',
-          border: '1px solid #333',
+          border: '2px solid #333',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: '8px',
+          fontSize: '10px',
           fontWeight: 'bold',
           color: 'white',
+          boxShadow: '0 2px 6px rgba(0,0,0,0.7)',
         };
         
         doorElements.push(
@@ -612,23 +619,24 @@ const GridComponent: React.FC<GridComponentProps> = ({
       } else if (door.type === 'vertical') {
         // Puerta vertical en el borde izquierdo de la celda
         const doorStyle: React.CSSProperties = {
-          width: '6px',
+          width: '10px',
           height: `${CELL_SIZE}px`,
-          backgroundColor: door.isOpen ? '#4CAF50' : '#8B4513',
+          backgroundColor: door.isOpen ? '#4CAF50' : '#D2691E',
           position: 'absolute',
-          left: `${x * CELL_SIZE - 3}px`,
+          left: `${x * CELL_SIZE - 5}px`,
           top: `${y * CELL_SIZE}px`,
-          zIndex: 7,
+          zIndex: 20,
           pointerEvents: 'auto',
           cursor: 'pointer',
-          border: '1px solid #333',
+          border: '2px solid #333',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: '8px',
+          fontSize: '10px',
           fontWeight: 'bold',
           color: 'white',
           writingMode: 'vertical-rl',
+          boxShadow: '0 2px 6px rgba(0,0,0,0.7)',
         };
         
         doorElements.push(

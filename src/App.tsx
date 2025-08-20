@@ -140,6 +140,7 @@ function App() {
     gridType,
     selectedTool,
     selectedColor,
+    fogEnabled,
     setTokens,
     setDrawingData,
     setFogOfWar,
@@ -149,16 +150,24 @@ function App() {
     setGridType,
     setSelectedTool,
     setSelectedColor,
+    setFogEnabled,
     isInSession: isInMultiplayerSession,
     isGM: isGameMaster,
-  }), [tokens, drawingData, fogOfWar, doors, walls, backgroundImage, gridType, selectedTool, selectedColor, isInMultiplayerSession, isGameMaster]);
+  }), [tokens, drawingData, fogOfWar, doors, walls, backgroundImage, gridType, selectedTool, selectedColor, fogEnabled, isInMultiplayerSession, isGameMaster]);
   
   const multiplayerSync = useMultiplayerSync(multiplayerSyncProps);
 
   // Manejar actualizaciones de juego remotas
   const handleGameUpdate = (update: GameUpdate) => {
-    // El hook useMultiplayerSync ya maneja las actualizaciones automáticamente
     console.log('Received game update:', update.type, update.data);
+    console.log('🔍 DEBUG: multiplayerSync.applyRemoteUpdate available?', !!multiplayerSync.applyRemoteUpdate);
+    // CRÍTICO: Pasar el update al hook useMultiplayerSync para que aplique los cambios
+    if (multiplayerSync.applyRemoteUpdate) {
+      console.log('🔍 DEBUG: Calling applyRemoteUpdate for:', update.type);
+      multiplayerSync.applyRemoteUpdate(update);
+    } else {
+      console.error('❌ ERROR: applyRemoteUpdate not available in multiplayerSync');
+    }
   };
 
   // Manejar cambios de estado de sesión
@@ -293,7 +302,11 @@ function App() {
   };
 
   const toggleFogOfWar = () => {
-    setFogEnabled(!fogEnabled);
+    const newFogEnabled = !fogEnabled;
+    setFogEnabled(newFogEnabled);
+    
+    // Sincronizar con multijugador
+    multiplayerSync.syncUpdateFogEnabled(newFogEnabled);
   };
 
   const clearFogOfWar = () => {
@@ -329,6 +342,9 @@ function App() {
 
   const clearDoors = () => {
     setDoors(new Map());
+    
+    // Sincronizar con multijugador
+    multiplayerSync.syncClearDoors();
   };
 
   const handleWallToggle = (x: number, y: number, type: 'horizontal' | 'vertical') => {
@@ -349,6 +365,9 @@ function App() {
 
   const clearWalls = () => {
     setWalls(new Map());
+    
+    // Sincronizar con multijugador
+    multiplayerSync.syncClearWalls();
   };
   
   const handleDiceRoll = (sides: number, result: number) => {
@@ -367,16 +386,12 @@ function App() {
   
   const handleSelectedToolChange = (tool: "move" | "draw" | "erase" | "fill" | "square" | "fog" | "door-h" | "door-v" | "wall-h" | "wall-v") => {
     setSelectedTool(tool);
-    
-    // Sincronizar con multijugador
-    multiplayerSync.syncUpdateSelectedTool(tool);
+    // NO sincronizar herramientas - cada jugador mantiene su propia selección
   };
   
   const handleSelectedColorChange = (color: string) => {
     setSelectedColor(color);
-    
-    // Sincronizar con multijugador
-    multiplayerSync.syncUpdateSelectedColor(color);
+    // NO sincronizar colores - cada jugador mantiene su propia selección
   };
 
   // Render en modo pantalla completa

@@ -18,6 +18,7 @@ interface UseMultiplayerSyncProps {
   gridType: "square" | "octagonal";
   selectedTool: "move" | "draw" | "erase" | "fill" | "square" | "fog" | "door-h" | "door-v" | "wall-h" | "wall-v";
   selectedColor: string;
+  fogEnabled: boolean;
   
   // Setters del estado
   setTokens: (tokens: any[] | ((prev: any[]) => any[])) => void;
@@ -29,6 +30,7 @@ interface UseMultiplayerSyncProps {
   setGridType: (gridType: "square" | "octagonal") => void;
   setSelectedTool: (tool: "move" | "draw" | "erase" | "fill" | "square" | "fog" | "door-h" | "door-v" | "wall-h" | "wall-v") => void;
   setSelectedColor: (color: string) => void;
+  setFogEnabled: (enabled: boolean) => void;
   
   // Configuración
   isInSession: boolean;
@@ -51,6 +53,8 @@ interface SyncMethods {
   // Métodos de sincronización para elementos arquitectónicos
   syncUpdateDoor: (doorKey: string, doorData: any) => void;
   syncUpdateWall: (wallKey: string, wallData: any) => void;
+  syncClearDoors: () => void;
+  syncClearWalls: () => void;
   
   // Método de sincronización para fondo
   syncUpdateBackground: (backgroundImage: string) => void;
@@ -64,6 +68,12 @@ interface SyncMethods {
   // Métodos de sincronización para herramientas de dibujo
   syncUpdateSelectedTool: (tool: "move" | "draw" | "erase" | "fill" | "square" | "fog" | "door-h" | "door-v" | "wall-h" | "wall-v") => void;
   syncUpdateSelectedColor: (color: string) => void;
+  
+  // Método de sincronización para fog enabled
+  syncUpdateFogEnabled: (enabled: boolean) => void;
+  
+  // Método para aplicar updates remotos
+  applyRemoteUpdate: (update: any) => void;
   
   // Utilidades
   canModify: (elementType?: 'tokens' | 'drawing' | 'fog' | 'doors' | 'walls' | 'background' | 'gridType') => boolean;
@@ -79,6 +89,7 @@ export const useMultiplayerSync = ({
   gridType,
   selectedTool,
   selectedColor,
+  fogEnabled,
   setTokens,
   setDrawingData,
   setFogOfWar,
@@ -88,6 +99,7 @@ export const useMultiplayerSync = ({
   setGridType,
   setSelectedTool,
   setSelectedColor,
+  setFogEnabled,
   isInSession,
   isGM,
 }: UseMultiplayerSyncProps): SyncMethods => {
@@ -131,10 +143,17 @@ export const useMultiplayerSync = ({
   
   // Aplicar actualizaciones remotas (sin dependencias para evitar loops)
   const applyRemoteUpdate = useCallback((update: GameUpdate) => {
-    if (isApplyingRemoteUpdate.current) return;
+    console.log('🔍 DEBUG: applyRemoteUpdate called with:', update.type);
+    console.log('🔍 DEBUG: isApplyingRemoteUpdate.current:', isApplyingRemoteUpdate.current);
+    
+    if (isApplyingRemoteUpdate.current) {
+      console.log('❌ DEBUG: Blocked by isApplyingRemoteUpdate flag');
+      return;
+    }
     
     console.log('🔄 Applying remote update:', update.type, update.data);
     isApplyingRemoteUpdate.current = true;
+    console.log('🔍 DEBUG: Set isApplyingRemoteUpdate.current to true');
     
     try {
       switch (update.type) {
@@ -237,12 +256,22 @@ export const useMultiplayerSync = ({
           console.log('🎲 Dice roll received:', update.data);
           break;
           
+        // NO procesar updates de herramientas - cada jugador mantiene su propia selección
         case 'selected_tool_update':
-          setSelectedTool(update.data.selectedTool);
+        case 'selected_color_update':
+          console.log('🎨 DEBUG: Ignoring tool/color update - local selection only');
           break;
           
-        case 'selected_color_update':
-          setSelectedColor(update.data.selectedColor);
+        case 'fog_enabled_update':
+          setFogEnabled(update.data.fogEnabled);
+          break;
+          
+        case 'doors_clear':
+          setDoors(new Map());
+          break;
+          
+        case 'walls_clear':
+          setWalls(new Map());
           break;
           
         default:
@@ -251,23 +280,23 @@ export const useMultiplayerSync = ({
     } catch (error) {
       console.error('Error applying remote update:', error);
     } finally {
-      // Resetear flag después de un breve delay
-      setTimeout(() => {
-        isApplyingRemoteUpdate.current = false;
-      }, 50);
+      // Resetear flag inmediatamente después de procesar
+      isApplyingRemoteUpdate.current = false;
+      console.log('🔍 DEBUG: Reset isApplyingRemoteUpdate.current to false');
     }
   }, []); // Sin dependencias para evitar loops infinitos
   
-  // Configurar el callback para recibir actualizaciones (solo una vez)
-  useEffect(() => {
-    console.log('🔧 Setting up multiplayer callback');
-    multiplayerService.onGameUpdate(applyRemoteUpdate);
-    
-    // Cleanup para evitar múltiples callbacks
-    return () => {
-      console.log('🧹 Cleaning up multiplayer callback');
-    };
-  }, []); // Sin dependencias para configurar solo una vez
+  // NOTA: El callback se configura en App.tsx, no aquí para evitar duplicados
+  // useEffect(() => {
+  //   console.log('🔧 Setting up multiplayer callback');
+  //   multiplayerService.onGameUpdate(applyRemoteUpdate);
+  //   
+  //   // Cleanup para evitar múltiples callbacks
+  //   return () => {
+  //     console.log('🧹 Cleaning up multiplayer callback');
+  //     multiplayerService.onGameUpdate(() => {});
+  //   };
+  // }, []); // Solo ejecutar una vez
   
   // Métodos de sincronización
   const syncAddToken = useCallback((token: any) => {
@@ -366,6 +395,27 @@ export const useMultiplayerSync = ({
     multiplayerService.syncSelectedColorUpdate(color);
   }, [isInSession]);
   
+  const syncUpdateFogEnabled = useCallback((enabled: boolean) => {
+    if (!isInSession || isApplyingRemoteUpdate.current) return;
+    
+    console.log('🌫️ Syncing fog enabled:', enabled);
+    multiplayerService.syncFogEnabledUpdate(enabled);
+  }, [isInSession]);
+  
+  const syncClearDoors = useCallback(() => {
+    if (!isInSession || isApplyingRemoteUpdate.current || !canModify('doors')) return;
+    
+    console.log('🚪 Syncing clear doors');
+    multiplayerService.syncClearDoors();
+  }, [isInSession, canModify]);
+  
+  const syncClearWalls = useCallback(() => {
+    if (!isInSession || isApplyingRemoteUpdate.current || !canModify('walls')) return;
+    
+    console.log('🧱 Syncing clear walls');
+    multiplayerService.syncClearWalls();
+  }, [isInSession, canModify]);
+  
   // Cleanup de timers al desmontar
   useEffect(() => {
     return () => {
@@ -384,11 +434,15 @@ export const useMultiplayerSync = ({
     syncUpdateFog,
     syncUpdateDoor,
     syncUpdateWall,
+    syncClearDoors,
+    syncClearWalls,
     syncUpdateBackground,
     syncUpdateGridType,
     syncDiceRoll,
     syncUpdateSelectedTool,
     syncUpdateSelectedColor,
+    syncUpdateFogEnabled,
+    applyRemoteUpdate,
     canModify,
   };
 };
