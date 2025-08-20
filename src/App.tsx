@@ -16,6 +16,8 @@ import {
   Minimize,
   Eye,
   EyeOff,
+  Users,
+  ExternalLink,
 } from "lucide-react";
 import GridComponent from "./components/GridComponent";
 import TokenPanel from "./components/TokenPanel";
@@ -24,6 +26,7 @@ import ApiSection from "./components/ApiSection";
 import InitiativeList from "./components/InitiativeList";
 import DiceRoller from "./components/DiceRoller";
 import MultiplayerPanel from "./components/MultiplayerPanel";
+import TokenManagerPopup from "./components/TokenManagerPopup";
 import { useMultiplayerSync } from "./hooks/useMultiplayerSync";
 import { GameUpdate } from "./services/WebSocketService";
 import "./App.css";
@@ -71,15 +74,26 @@ function App() {
   
   // Estado para resultados de dados
   const [lastDiceRoll, setLastDiceRoll] = useState<{ sides: number; result: number; player: string; timestamp: number } | null>(null);
+  
+  // Estado para Token Manager Popup
+  const [showTokenManager, setShowTokenManager] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const toggleFullscreen = () => {
-    setIsFullscreen(!isFullscreen);
+    const newFullscreenState = !isFullscreen;
+    setIsFullscreen(newFullscreenState);
+    
+    // Mostrar automáticamente Token Manager en pantalla completa
+    if (newFullscreenState) {
+      setShowTokenManager(true);
+    }
   };
 
   const exitFullscreen = () => {
     setIsFullscreen(false);
+    // Opcional: ocultar Token Manager al salir de pantalla completa
+    // setShowTokenManager(false);
   };
 
   // Función para revelar áreas alrededor de tokens aliados
@@ -159,14 +173,9 @@ function App() {
 
   // Manejar actualizaciones de juego remotas
   const handleGameUpdate = (update: GameUpdate) => {
-    console.log('Received game update:', update.type, update.data);
-    console.log('🔍 DEBUG: multiplayerSync.applyRemoteUpdate available?', !!multiplayerSync.applyRemoteUpdate);
     // CRÍTICO: Pasar el update al hook useMultiplayerSync para que aplique los cambios
     if (multiplayerSync.applyRemoteUpdate) {
-      console.log('🔍 DEBUG: Calling applyRemoteUpdate for:', update.type);
       multiplayerSync.applyRemoteUpdate(update);
-    } else {
-      console.error('❌ ERROR: applyRemoteUpdate not available in multiplayerSync');
     }
   };
 
@@ -174,7 +183,6 @@ function App() {
   const handleSessionStateChange = (inSession: boolean, isGM: boolean) => {
     setIsInMultiplayerSession(inSession);
     setIsGameMaster(isGM);
-    console.log('Session state changed:', { inSession, isGM });
   };
 
   const handleBackgroundUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -278,11 +286,9 @@ function App() {
     points: number[];
     color: string;
   }) => {
-    console.log('🎨 DEBUG: handleDrawing called with:', newDrawingData);
     setDrawingData([...drawingData, newDrawingData]);
     
     // Sincronizar con multijugador
-    console.log('🎨 DEBUG: Calling syncAddDrawing');
     multiplayerSync.syncAddDrawing(newDrawingData);
   };
 
@@ -319,7 +325,6 @@ function App() {
   };
 
   const handleDoorToggle = (x: number, y: number, type: 'horizontal' | 'vertical') => {
-    console.log('🚪 DEBUG: handleDoorToggle called:', x, y, type);
     const cellKey = `${x}-${y}`;
     const newDoors = new Map(doors);
     
@@ -340,7 +345,6 @@ function App() {
     setDoors(newDoors);
     
     // Sincronizar con multijugador
-    console.log('🚪 DEBUG: Calling syncUpdateDoor with:', cellKey, newDoors.get(cellKey));
     multiplayerSync.syncUpdateDoor(cellKey, newDoors.get(cellKey));
   };
 
@@ -402,7 +406,23 @@ function App() {
   if (isFullscreen) {
     return (
       <div className="fixed inset-0 bg-gray-900 text-white flex flex-col z-50">
-        <div className="absolute top-4 right-4 z-10">
+        <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
+          {/* Token Manager Button */}
+          <button
+            onClick={() => setShowTokenManager(true)}
+            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 p-3 rounded-lg flex items-center justify-center gap-2 transition-all hover:scale-105 shadow-lg"
+          >
+            <Users size={18} />
+            <span className="font-semibold">Token Manager</span>
+            <ExternalLink size={16} />
+            {tokens.length > 0 && (
+              <span className="bg-white/20 px-2 py-1 rounded-full text-xs font-bold">
+                {tokens.length}
+              </span>
+            )}
+          </button>
+          
+          {/* Exit Fullscreen Button */}
           <button
             className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded flex items-center gap-2 transition-all"
             onClick={exitFullscreen}
@@ -437,12 +457,21 @@ function App() {
               />
           </div>
         </div>
+        
+        {/* Token Manager Popup - También en fullscreen */}
+        <TokenManagerPopup
+          isOpen={showTokenManager}
+          onClose={() => setShowTokenManager(false)}
+          tokens={tokens}
+          onTokenUpdate={updateToken}
+          onTokenDelete={removeToken}
+        />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex flex-col">
+    <div className="min-h-screen bg-gray-900 text-white flex flex-col touch-friendly no-select">
       <header
         className="p-4 shadow-lg"
         style={{ background: "linear-gradient(145deg, #1a1a1a, #2d2d2d)" }}
@@ -450,9 +479,9 @@ function App() {
         <h1 className="text-2xl font-bold text-center">D&D Combat Grid</h1>
       </header>
 
-      <main className="flex-grow flex flex-col md:flex-row p-4 gap-4">
+      <main className="flex-grow flex flex-col lg:flex-row p-2 md:p-4 gap-2 md:gap-4">
         {/* Columna izquierda: Lista de iniciativa y dados */}
-        <div className="w-full md:w-1/4 flex flex-col gap-4">
+        <div className="w-full lg:w-1/4 flex flex-col gap-2 md:gap-4 order-2 lg:order-1">
           <InitiativeList tokens={tokens} />{" "}
           {/* Mostrar la lista de iniciativa */}
           <DiceRoller onResult={handleDiceRoll} /> {/* Mostrar el lanzador de dados */}
@@ -475,9 +504,9 @@ function App() {
         </div>
 
         {/* Columna central: Grilla y herramientas de dibujo */}
-        <div className="flex flex-col gap-4 w-full">
+        <div className="flex flex-col gap-2 md:gap-4 w-full order-1 lg:order-2">
           <div
-            className="p-4 rounded-lg shadow-lg"
+            className="p-2 md:p-4 rounded-lg shadow-lg"
             style={{ background: "linear-gradient(145deg, #1a1a1a, #2d2d2d)" }}
           >
             <div className="flex justify-between items-center mb-4">
@@ -574,6 +603,15 @@ function App() {
       </main>
 
       <ApiSection />
+      
+      {/* Token Manager Popup */}
+      <TokenManagerPopup
+        isOpen={showTokenManager}
+        onClose={() => setShowTokenManager(false)}
+        tokens={tokens}
+        onTokenUpdate={updateToken}
+        onTokenDelete={removeToken}
+      />
 
       <footer
         className="p-4 text-center text-sm"

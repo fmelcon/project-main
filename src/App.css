@@ -260,8 +260,42 @@ button:active {
   animation: pulse 1.5s infinite;
 }
 
-/* Responsive styles */
+/* Mobile-first responsive design */
 @media (max-width: 768px) {
+  /* Reduce padding and margins on mobile */
+  .mobile-optimized {
+    padding: 0.5rem !important;
+    margin: 0.25rem !important;
+  }
+  
+  /* Make buttons larger for touch */
+  button {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0.75rem 1rem;
+  }
+  
+  /* Improve text readability */
+  body {
+    font-size: 16px;
+    line-height: 1.5;
+  }
+  
+  /* Prevent zoom on input focus */
+  input, select, textarea {
+    font-size: 16px;
+  }
+  
+  /* Hide scrollbars but keep functionality */
+  .scrollable {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollable::-webkit-scrollbar {
+    display: none;
+  }
+
   .flex-col {
     flex-direction: column;
   }
@@ -335,6 +369,28 @@ button:active {
     padding: 0.6rem;
     font-size: 0.8rem;
   }
+}
+
+/* Tablet styles */
+@media (min-width: 769px) and (max-width: 1024px) {
+  /* Tablet-specific optimizations */
+  .tablet-optimized {
+    padding: 1rem;
+  }
+}
+
+/* Touch-friendly styles */
+.touch-friendly {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Prevent text selection on UI elements */
+.no-select {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 @keyframes roll {
   0% {

@@ -86,9 +86,40 @@ const GridComponent: React.FC<GridComponentProps> = ({
   } | null>(null);
 
   const GRID_SIZE = 40;
-  const CELL_SIZE = 30;
+  
+  // Responsive cell size based on viewport
+  const getResponsiveCellSize = () => {
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    
+    // Mobile phones (portrait)
+    if (viewportWidth < 768) {
+      return Math.min(20, (viewportWidth - 40) / GRID_SIZE);
+    }
+    // Tablets (portrait)
+    else if (viewportWidth < 1024) {
+      return Math.min(25, (viewportWidth - 100) / GRID_SIZE);
+    }
+    // Desktop
+    else {
+      return 30;
+    }
+  };
+  
+  const [cellSize, setCellSize] = useState(getResponsiveCellSize());
+  const CELL_SIZE = cellSize;
   const GRID_WIDTH = GRID_SIZE * CELL_SIZE;
   const GRID_HEIGHT = GRID_SIZE * CELL_SIZE;
+  
+  // Update cell size on window resize
+  useEffect(() => {
+    const handleResize = () => {
+      setCellSize(getResponsiveCellSize());
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Draw the canvas elements (lines, shapes, etc.)
   useEffect(() => {
@@ -324,12 +355,94 @@ const GridComponent: React.FC<GridComponentProps> = ({
     ctx.fillRect(cellX, cellY, CELL_SIZE, CELL_SIZE);
   };
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (!gridRef.current) return;
-
+  // Función helper para obtener coordenadas de mouse o touch
+  const getEventCoordinates = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!gridRef.current) return null;
+    
     const rect = gridRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    let clientX: number, clientY: number;
+    
+    if ('touches' in e) {
+      // Touch event
+      if (e.touches.length === 0) return null;
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else {
+      // Mouse event
+      clientX = e.clientX;
+      clientY = e.clientY;
+    }
+    
+    return {
+      x: clientX - rect.left,
+      y: clientY - rect.top
+    };
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    const coords = getEventCoordinates(e);
+    if (!coords) return;
+    
+    handlePointerDown(coords.x, coords.y);
+  };
+  
+  // Touch event handlers with proper passive: false
+  useEffect(() => {
+    const gridElement = gridRef.current;
+    if (!gridElement) return;
+    
+    const handleTouchStartNative = (e: TouchEvent) => {
+      e.preventDefault(); // Prevenir scroll y zoom
+      const rect = gridElement.getBoundingClientRect();
+      if (e.touches.length === 0) return;
+      
+      const x = e.touches[0].clientX - rect.left;
+      const y = e.touches[0].clientY - rect.top;
+      handlePointerDown(x, y);
+    };
+    
+    const handleTouchMoveNative = (e: TouchEvent) => {
+      e.preventDefault(); // Prevenir scroll
+      const rect = gridElement.getBoundingClientRect();
+      if (e.touches.length === 0) return;
+      
+      const x = e.touches[0].clientX - rect.left;
+      const y = e.touches[0].clientY - rect.top;
+      handlePointerMove(x, y);
+    };
+    
+    const handleTouchEndNative = (e: TouchEvent) => {
+      e.preventDefault();
+      handlePointerUp();
+    };
+    
+    const handleTouchCancelNative = (e: TouchEvent) => {
+      e.preventDefault();
+      handlePointerLeave();
+    };
+    
+    // Agregar event listeners con passive: false
+    gridElement.addEventListener('touchstart', handleTouchStartNative, { passive: false });
+    gridElement.addEventListener('touchmove', handleTouchMoveNative, { passive: false });
+    gridElement.addEventListener('touchend', handleTouchEndNative, { passive: false });
+    gridElement.addEventListener('touchcancel', handleTouchCancelNative, { passive: false });
+    
+    return () => {
+      gridElement.removeEventListener('touchstart', handleTouchStartNative);
+      gridElement.removeEventListener('touchmove', handleTouchMoveNative);
+      gridElement.removeEventListener('touchend', handleTouchEndNative);
+      gridElement.removeEventListener('touchcancel', handleTouchCancelNative);
+    };
+  }, []);
+  
+  const handleTouchStart = (e: React.TouchEvent) => {
+    // Fallback para React events (no preventDefault aquí)
+    const coords = getEventCoordinates(e);
+    if (!coords) return;
+    handlePointerDown(coords.x, coords.y);
+  };
+  
+  const handlePointerDown = (x: number, y: number) => {
 
     if (selectedTool === "move") {
       // Check if clicking on a token
@@ -388,11 +501,20 @@ const GridComponent: React.FC<GridComponentProps> = ({
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (!gridRef.current) return;
-
-    const rect = gridRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const coords = getEventCoordinates(e);
+    if (!coords) return;
+    
+    handlePointerMove(coords.x, coords.y);
+  };
+  
+  const handleTouchMove = (e: React.TouchEvent) => {
+    // Fallback para React events (no preventDefault aquí)
+    const coords = getEventCoordinates(e);
+    if (!coords) return;
+    handlePointerMove(coords.x, coords.y);
+  };
+  
+  const handlePointerMove = (x: number, y: number) => {
 
     if (isDragging && draggedToken) {
       // Move token
@@ -417,6 +539,15 @@ const GridComponent: React.FC<GridComponentProps> = ({
   };
 
   const handleMouseUp = () => {
+    handlePointerUp();
+  };
+  
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    // Fallback para React events (no preventDefault aquí)
+    handlePointerUp();
+  };
+  
+  const handlePointerUp = () => {
     if (isDragging) {
       setIsDragging(false);
       setDraggedToken(null);
@@ -453,6 +584,15 @@ const GridComponent: React.FC<GridComponentProps> = ({
   };
 
   const handleMouseLeave = () => {
+    handlePointerLeave();
+  };
+  
+  const handleTouchCancel = (e: React.TouchEvent) => {
+    // Fallback para React events (no preventDefault aquí)
+    handlePointerLeave();
+  };
+  
+  const handlePointerLeave = () => {
     setIsDrawing(false);
     setCurrentPath([]);
     setSquareStart(null);
@@ -514,18 +654,15 @@ const GridComponent: React.FC<GridComponentProps> = ({
 
   // Render walls
   const renderWalls = () => {
-    console.log('🧱 DEBUG: Rendering walls, count:', walls.size);
     const wallElements = [];
     
     walls.forEach((wall, key) => {
-      console.log('🧱 DEBUG: Rendering wall at', key, wall);
       const [x, y] = key.split('-').map(Number);
       
       // Verificar si la pared está oculta por fog of war
       const cellKey = `${x}-${y}`;
       const isRevealed = fogEnabled ? fogOfWar.has(cellKey) : true;
       if (fogEnabled && !isRevealed) {
-        console.log('🌫️ DEBUG: Wall at', key, 'hidden by fog of war');
         return; // No renderizar pared si está oculta por niebla
       }
       
@@ -585,18 +722,15 @@ const GridComponent: React.FC<GridComponentProps> = ({
 
   // Render doors
   const renderDoors = () => {
-    console.log('🚪 DEBUG: Rendering doors, count:', doors.size);
     const doorElements = [];
     
     doors.forEach((door, key) => {
-      console.log('🚪 DEBUG: Rendering door at', key, door);
       const [x, y] = key.split('-').map(Number);
       
       // Verificar si la puerta está oculta por fog of war
       const cellKey = `${x}-${y}`;
       const isRevealed = fogEnabled ? fogOfWar.has(cellKey) : true;
       if (fogEnabled && !isRevealed) {
-        console.log('🌫️ DEBUG: Door at', key, 'hidden by fog of war');
         return; // No renderizar puerta si está oculta por niebla
       }
       
@@ -821,17 +955,26 @@ const GridComponent: React.FC<GridComponentProps> = ({
       style={{
         width: `${GRID_WIDTH}px`,
         height: `${GRID_HEIGHT}px`,
+        maxWidth: "100vw",
+        maxHeight: "70vh",
         position: "relative",
         backgroundImage: backgroundImage ? `url(${backgroundImage})` : "none",
         backgroundSize: "cover",
         backgroundPosition: "center",
         margin: "0 auto",
         cursor: selectedTool === "move" ? "default" : "crosshair",
+        overflow: "hidden",
+        border: "2px solid #4a5568",
+        borderRadius: "8px",
       }}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseLeave}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchCancel}
     >
       {/* Background layer */}
       {!backgroundImage && (

@@ -122,11 +122,12 @@ const TokenManagerPopup: React.FC<TokenManagerPopupProps> = ({
     <>
       {/* Popup Window */}
       <div
-        className="fixed bg-gray-800 border border-gray-600 rounded-lg shadow-2xl z-50 min-w-80 max-w-md"
+        className="fixed bg-gray-800 border border-gray-600 rounded-lg shadow-2xl min-w-80 max-w-md"
         style={{
           left: `${position.x}px`,
           top: `${position.y}px`,
           maxHeight: isMinimized ? 'auto' : '70vh',
+          zIndex: 999999, // Z-index máximo para estar por encima de todo
         }}
       >
         {/* Header */}
@@ -171,7 +172,15 @@ const TokenManagerPopup: React.FC<TokenManagerPopupProps> = ({
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {tokens.map((token) => (
+                  {tokens
+                    .sort((a, b) => {
+                      // Ordenar por iniciativa (descendente), luego por nombre
+                      const aInit = a.initiative || 0;
+                      const bInit = b.initiative || 0;
+                      if (aInit !== bInit) return bInit - aInit;
+                      return (a.name || a.type).localeCompare(b.name || b.type);
+                    })
+                    .map((token) => (
                     <div
                       key={token.id}
                       className="bg-gray-900 rounded-lg p-3 border border-gray-600 hover:border-gray-500 transition-colors"
@@ -189,13 +198,31 @@ const TokenManagerPopup: React.FC<TokenManagerPopupProps> = ({
                             {token.name ? token.name.charAt(0).toUpperCase() : 
                              token.type === "ally" ? "A" : token.type === "enemy" ? "E" : "B"}
                           </div>
-                          <div>
-                            <h4 className="font-semibold text-white text-sm">
-                              {token.name || `${token.type.charAt(0).toUpperCase() + token.type.slice(1)} Token`}
-                            </h4>
-                            <p className="text-xs text-gray-400">
-                              {token.type.charAt(0).toUpperCase() + token.type.slice(1)} • ({token.x}, {token.y})
-                            </p>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-semibold text-white text-sm">
+                                {token.name || `${token.type.charAt(0).toUpperCase() + token.type.slice(1)} Token`}
+                              </h4>
+                              {token.initiative && (
+                                <div className="flex items-center gap-1 bg-yellow-900/30 px-2 py-1 rounded">
+                                  <Zap size={10} className="text-yellow-400" />
+                                  <span className="text-xs text-yellow-300 font-bold">{token.initiative}</span>
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 mt-1">
+                              <p className="text-xs text-gray-400">
+                                {token.type.charAt(0).toUpperCase() + token.type.slice(1)} • ({token.x}, {token.y})
+                              </p>
+                              {token.maxHp && (
+                                <div className="flex items-center gap-1">
+                                  <Heart size={10} className="text-red-400" />
+                                  <span className="text-xs text-red-300 font-semibold">
+                                    {token.currentHp || token.maxHp}/{token.maxHp}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
                         <div className="flex items-center gap-1">
