@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   Search,
   Plus,
@@ -21,8 +21,11 @@ import GridComponent from "./components/GridComponent";
 import TokenPanel from "./components/TokenPanel";
 import DrawingTools from "./components/DrawingTools";
 import ApiSection from "./components/ApiSection";
-import InitiativeList from "./components/InitiativeList"; // Importar el nuevo componente
-import DiceRoller from "./components/DiceRoller"; // Importar el nuevo componente
+import InitiativeList from "./components/InitiativeList";
+import DiceRoller from "./components/DiceRoller";
+import MultiplayerPanel from "./components/MultiplayerPanel";
+import { useMultiplayerSync } from "./hooks/useMultiplayerSync";
+import { GameUpdate } from "./services/WebSocketService";
 import "./App.css";
 
 function App() {
@@ -59,8 +62,15 @@ function App() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [fogOfWar, setFogOfWar] = useState<Set<string>>(new Set());
   const [fogEnabled, setFogEnabled] = useState(false);
+  
+  // Estados de multijugador
+  const [isInMultiplayerSession, setIsInMultiplayerSession] = useState(false);
+  const [isGameMaster, setIsGameMaster] = useState(false);
   const [doors, setDoors] = useState<Map<string, { type: 'horizontal' | 'vertical'; isOpen: boolean }>>(new Map());
   const [walls, setWalls] = useState<Map<string, { type: 'horizontal' | 'vertical' }>>(new Map());
+  
+  // Estado para resultados de dados
+  const [lastDiceRoll, setLastDiceRoll] = useState<{ sides: number; result: number; player: string; timestamp: number } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -104,16 +114,70 @@ function App() {
   };
 
   // Efecto para revelar áreas alrededor de aliados cuando se muevan o se active la niebla
+  // Usar useRef para evitar loops infinitos
+  const lastTokensRef = useRef<string>('');
+  const lastFogEnabledRef = useRef<boolean>(false);
+  
   useEffect(() => {
-    revealAroundAllies();
+    const tokensString = JSON.stringify(tokens.map(t => ({ id: t.id, x: t.x, y: t.y, type: t.type })));
+    
+    // Solo ejecutar si realmente cambió la posición de tokens o el estado de fog
+    if (tokensString !== lastTokensRef.current || fogEnabled !== lastFogEnabledRef.current) {
+      lastTokensRef.current = tokensString;
+      lastFogEnabledRef.current = fogEnabled;
+      revealAroundAllies();
+    }
   }, [tokens, fogEnabled]);
+
+  // Hook de sincronización multijugador (memoizado para evitar recreación)
+  const multiplayerSyncProps = useMemo(() => ({
+    tokens,
+    drawingData,
+    fogOfWar,
+    doors,
+    walls,
+    backgroundImage,
+    gridType,
+    selectedTool,
+    selectedColor,
+    setTokens,
+    setDrawingData,
+    setFogOfWar,
+    setDoors,
+    setWalls,
+    setBackgroundImage,
+    setGridType,
+    setSelectedTool,
+    setSelectedColor,
+    isInSession: isInMultiplayerSession,
+    isGM: isGameMaster,
+  }), [tokens, drawingData, fogOfWar, doors, walls, backgroundImage, gridType, selectedTool, selectedColor, isInMultiplayerSession, isGameMaster]);
+  
+  const multiplayerSync = useMultiplayerSync(multiplayerSyncProps);
+
+  // Manejar actualizaciones de juego remotas
+  const handleGameUpdate = (update: GameUpdate) => {
+    // El hook useMultiplayerSync ya maneja las actualizaciones automáticamente
+    console.log('Received game update:', update.type, update.data);
+  };
+
+  // Manejar cambios de estado de sesión
+  const handleSessionStateChange = (inSession: boolean, isGM: boolean) => {
+    setIsInMultiplayerSession(inSession);
+    setIsGameMaster(isGM);
+    console.log('Session state changed:', { inSession, isGM });
+  };
 
   const handleBackgroundUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onload = (event) => {
-        setBackgroundImage(event.target?.result as string);
+        const newBackground = event.target?.result as string;
+        setBackgroundImage(newBackground);
+        
+        // Sincronizar con multijugador
+        multiplayerSync.syncUpdateBackground(newBackground);
       };
       reader.readAsDataURL(file);
     }
@@ -121,22 +185,28 @@ function App() {
 
   const clearDrawing = () => {
     setDrawingData([]);
+    
+    // Sincronizar con multijugador
+    multiplayerSync.syncClearDrawings();
   };
 
   const addToken = (type: "ally" | "enemy" | "boss", tokenData: any) => {
     const newToken = {
-      id: `token-${Date.now()}`,
+      id: `token-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       type,
-      x: Math.floor(Math.random() * 40),
-      y: Math.floor(Math.random() * 40),
-      color:
-        type === "ally" ? "#3498db" : type === "enemy" ? "#e74c3c" : "#f1c40f",
+      x: tokenData.x || Math.floor(Math.random() * 40),
+      y: tokenData.y || Math.floor(Math.random() * 40),
+      color: tokenData.color || (type === "ally" ? "#3498db" : type === "enemy" ? "#e74c3c" : "#f1c40f"),
       name: tokenData.name || "",
       initiative: tokenData.initiative || undefined,
       maxHp: tokenData.maxHp || undefined,
       currentHp: tokenData.currentHp || tokenData.maxHp || undefined,
+      ac: tokenData.ac,
     };
     setTokens([...tokens, newToken]);
+    
+    // Sincronizar con multijugador
+     multiplayerSync.syncAddToken(newToken);
   };
 
   const updateTokenName = (id: string, newName: string) => {
@@ -151,10 +221,16 @@ function App() {
     setTokens(
       tokens.map((token) => (token.id === id ? { ...token, x, y } : token))
     );
+    
+    // Sincronizar con multijugador
+     multiplayerSync.syncUpdateToken(id, { x, y });
   };
 
   const removeToken = (id: string) => {
     setTokens(tokens.filter((token) => token.id !== id));
+    
+    // Sincronizar con multijugador
+     multiplayerSync.syncRemoveToken(id);
   };
 
   const resetGrid = () => {
@@ -194,6 +270,9 @@ function App() {
     color: string;
   }) => {
     setDrawingData([...drawingData, newDrawingData]);
+    
+    // Sincronizar con multijugador
+    multiplayerSync.syncAddDrawing(newDrawingData);
   };
 
   const updateToken = (id: string, newData: any) => {
@@ -202,6 +281,9 @@ function App() {
         token.id === id ? { ...token, ...newData } : token
       )
     );
+    
+    // Sincronizar con multijugador
+     multiplayerSync.syncUpdateToken(id, newData);
   };
 
   const handleFogToggle = (x: number, y: number) => {
@@ -216,6 +298,9 @@ function App() {
 
   const clearFogOfWar = () => {
     setFogOfWar(new Set());
+    
+    // Sincronizar con multijugador
+    multiplayerSync.syncUpdateFog(new Set());
   };
 
   const handleDoorToggle = (x: number, y: number, type: 'horizontal' | 'vertical') => {
@@ -237,6 +322,9 @@ function App() {
     }
     
     setDoors(newDoors);
+    
+    // Sincronizar con multijugador
+    multiplayerSync.syncUpdateDoor(cellKey, newDoors.get(cellKey));
   };
 
   const clearDoors = () => {
@@ -254,10 +342,41 @@ function App() {
     }
     
     setWalls(newWalls);
+    
+    // Sincronizar con multijugador
+    multiplayerSync.syncUpdateWall(cellKey, newWalls.get(cellKey));
   };
 
   const clearWalls = () => {
     setWalls(new Map());
+  };
+  
+  const handleDiceRoll = (sides: number, result: number) => {
+    const diceRollData = {
+      sides,
+      result,
+      player: isGameMaster ? 'GM' : 'Player',
+      timestamp: Date.now()
+    };
+    
+    setLastDiceRoll(diceRollData);
+    
+    // Sincronizar con multijugador
+    multiplayerSync.syncDiceRoll(diceRollData);
+  };
+  
+  const handleSelectedToolChange = (tool: "move" | "draw" | "erase" | "fill" | "square" | "fog" | "door-h" | "door-v" | "wall-h" | "wall-v") => {
+    setSelectedTool(tool);
+    
+    // Sincronizar con multijugador
+    multiplayerSync.syncUpdateSelectedTool(tool);
+  };
+  
+  const handleSelectedColorChange = (color: string) => {
+    setSelectedColor(color);
+    
+    // Sincronizar con multijugador
+    multiplayerSync.syncUpdateSelectedColor(color);
   };
 
   // Render en modo pantalla completa
@@ -317,7 +436,14 @@ function App() {
         <div className="w-full md:w-1/4 flex flex-col gap-4">
           <InitiativeList tokens={tokens} />{" "}
           {/* Mostrar la lista de iniciativa */}
-          <DiceRoller /> {/* Mostrar el lanzador de dados */}
+          <DiceRoller onResult={handleDiceRoll} /> {/* Mostrar el lanzador de dados */}
+          
+          {/* Panel de Multijugador */}
+          <MultiplayerPanel
+            onGameUpdate={handleGameUpdate}
+            onSessionStateChange={handleSessionStateChange}
+          />
+          
           <TokenPanel
             addToken={addToken}
             removeToken={removeToken}
@@ -341,7 +467,11 @@ function App() {
                   className={`px-3 py-1 rounded ${
                     gridType === "square" ? "bg-purple-600" : "bg-gray-700"
                   }`}
-                  onClick={() => setGridType("square")}
+                  onClick={() => {
+                    setGridType("square");
+                    // Sincronizar con multijugador
+                    multiplayerSync.syncUpdateGridType("square");
+                  }}
                 >
                   Square Grid
                 </button>
@@ -349,7 +479,11 @@ function App() {
                   className={`px-3 py-1 rounded ${
                     gridType === "octagonal" ? "bg-purple-600" : "bg-gray-700"
                   }`}
-                  onClick={() => setGridType("octagonal")}
+                  onClick={() => {
+                    setGridType("octagonal");
+                    // Sincronizar con multijugador
+                    multiplayerSync.syncUpdateGridType("octagonal");
+                  }}
                 >
                   Octagonal Grid
                 </button>
@@ -407,9 +541,9 @@ function App() {
 
           <DrawingTools
             selectedTool={selectedTool}
-            setSelectedTool={setSelectedTool}
+            setSelectedTool={handleSelectedToolChange}
             selectedColor={selectedColor}
-            setSelectedColor={setSelectedColor}
+            setSelectedColor={handleSelectedColorChange}
             clearDrawing={clearDrawing}
             fogEnabled={fogEnabled}
             toggleFogOfWar={toggleFogOfWar}

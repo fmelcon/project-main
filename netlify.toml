@@ -1,0 +1,56 @@
+[build]
+  # Comando de build para el cliente
+  command = "npm run build"
+  # Directorio de publicación
+  publish = "dist"
+  
+  # Variables de entorno para el build
+  [build.environment]
+    NODE_VERSION = "18"
+    NPM_VERSION = "8"
+
+# Configuración para SPA (Single Page Application)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Headers para mejorar seguridad y performance
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' ws: wss: https://www.dnd5eapi.co;"
+
+# Headers específicos para assets estáticos
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Headers para archivos de audio
+[[headers]]
+  for = "/*.mp3"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"
+
+# Headers para imágenes
+[[headers]]
+  for = "/*.jpg"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"
+
+# Configuración para funciones serverless (si se necesitan en el futuro)
+[functions]
+  directory = "netlify/functions"
+
+# Configuración de desarrollo local
+[dev]
+  command = "npm run dev"
+  port = 5173
+  targetPort = 5173
+  publish = "dist"
+  autoLaunch = true

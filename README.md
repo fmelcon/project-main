@@ -52,6 +52,15 @@ Una aplicación web moderna y completa para gestionar combates de Dungeons & Dra
 - **Rate limiting**: Optimizado para evitar errores de API
 - **Información detallada**: Descripciones, componentes, duración
 
+### 🌐 **Multijugador en Tiempo Real**
+- **Sesiones online**: Crear y unirse a sesiones multijugador
+- **Sincronización automática**: Todos los cambios se sincronizan en tiempo real
+- **Roles de usuario**: Game Master y Players con permisos diferenciados
+- **WebSocket**: Comunicación bidireccional de baja latencia
+- **Gestión de sesiones**: Sistema robusto de salas con IDs únicos
+- **Reconexión automática**: Manejo inteligente de desconexiones
+- **Estado persistente**: Las sesiones se mantienen activas entre reconexiones
+
 ## 🚀 Instalación y Configuración
 
 ### Prerrequisitos
@@ -66,11 +75,17 @@ Una aplicación web moderna y completa para gestionar combates de Dungeons & Dra
 git clone [URL_DEL_REPOSITORIO]
 cd project-main
 
-# Instalar dependencias
+# Instalar dependencias del cliente
 npm install
 
-# Iniciar servidor de desarrollo
+# Instalar dependencias del servidor WebSocket
+npm run server:install
+
+# Opción 1: Solo cliente (modo offline)
 npm run dev
+
+# Opción 2: Cliente + Servidor (modo multijugador)
+npm run dev:full
 
 # Abrir en el navegador
 # http://localhost:5173
@@ -79,10 +94,19 @@ npm run dev
 ### Scripts Disponibles
 
 ```bash
-npm run dev          # Servidor de desarrollo
+# Cliente
+npm run dev          # Servidor de desarrollo (solo cliente)
 npm run build        # Compilar para producción
 npm run preview      # Vista previa de producción
 npm run lint         # Verificar código
+
+# Servidor WebSocket
+npm run server       # Ejecutar servidor WebSocket
+npm run server:dev   # Servidor WebSocket con auto-restart
+npm run server:install # Instalar dependencias del servidor
+
+# Desarrollo completo
+npm run dev:full     # Cliente + Servidor simultáneamente
 ```
 
 ## 🎮 Guía de Uso
@@ -126,6 +150,30 @@ npm run lint         # Verificar código
 - **Walls**: Paredes horizontales/verticales
 - **Doors**: Puertas interactivas
 - **Fog**: Activar niebla de guerra
+
+### Multijugador Online
+
+1. **Iniciar Servidor**
+   - Ejecuta `npm run dev:full` para cliente + servidor
+   - O ejecuta `npm run server:dev` en una terminal separada
+
+2. **Crear Sesión (Game Master)**
+   - Click en "Connect to Server" en el panel Multiplayer
+   - Click en "Create New Session"
+   - Ingresa nombre de sesión y tu nombre
+   - Comparte el Session ID con los jugadores
+
+3. **Unirse a Sesión (Players)**
+   - Click en "Connect to Server"
+   - Click en "Join Session"
+   - Ingresa el Session ID y tu nombre
+   - ¡Listo para jugar!
+
+4. **Durante el Juego**
+   - **GM**: Puede modificar todo (fog, paredes, puertas, fondo)
+   - **Players**: Pueden mover tokens y dibujar
+   - **Sincronización**: Todos los cambios se ven en tiempo real
+   - **Reconexión**: Si se desconecta, reconecta automáticamente
 
 ## 🏗️ Arquitectura del Proyecto
 
@@ -310,16 +358,63 @@ console.log('Fog revealed cells:', revealedCells);
 - **Tablet**: Funcionalidad táctil optimizada
 - **Mobile**: Interfaz adaptativa
 
+### Plataformas de Deployment
+- **Netlify**: Soporte completo con Functions para multijugador
+- **Vercel**: Compatible con adaptaciones
+- **Heroku**: Soporte para servidor WebSocket
+- **Desarrollo local**: Funcionalidad completa
+
+## 🚀 Deployment en Netlify
+
+### Configuración Automática
+
+La aplicación está configurada para deployment automático en Netlify:
+
+1. **Fork del repositorio** en GitHub
+2. **Conectar a Netlify**:
+   - Ir a [netlify.com](https://netlify.com)
+   - "New site from Git" → Seleccionar tu fork
+   - Build settings se configuran automáticamente desde `netlify.toml`
+3. **Deploy automático**: Cada push a main despliega automáticamente
+
+### Funcionalidad Multijugador en Netlify
+
+**Detección Automática:**
+- La app detecta automáticamente si está en Netlify
+- Usa HTTP polling en lugar de WebSockets para compatibilidad serverless
+- Funcionalidad completa mantenida con adaptaciones
+
+**Configuración:**
+```bash
+# El sistema detecta automáticamente:
+# - netlify.app domains
+# - Netlify Functions endpoints
+# - Usa polling cada 2 segundos para sincronización
+```
+
+### Variables de Entorno (Opcional)
+
+En Netlify Dashboard → Site settings → Environment variables:
+
+```bash
+# Opcional: URL personalizada del servidor
+REACT_APP_WEBSOCKET_URL=wss://tu-servidor-websocket.com
+
+# Opcional: Intervalo de polling (ms)
+REACT_APP_POLLING_INTERVAL=2000
+```
+
 ## 🔮 Roadmap Futuro
 
 ### Funcionalidades Planificadas
-- [ ] Modo multijugador en tiempo real
+- [x] Modo multijugador en tiempo real
+- [x] Deployment en Netlify
 - [ ] Importación de mapas desde Roll20
 - [ ] Sistema de macros personalizables
 - [ ] Integración con D&D Beyond
 - [ ] Efectos de sonido ambientales
 - [ ] Sistema de chat integrado
-- [ ] Guardado en la nube
+- [ ] Guardado en la nube con base de datos
 
 ## 📄 Licencia
 

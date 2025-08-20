@@ -3,8 +3,12 @@ import * as THREE from "three";
 import diceSound from "../dice-sound.mp3"; // Importa el archivo de sonido
 import diceTextureImage from "../dice-texture.jpg.jpg"; // Importa la textura de dado
 
-const DiceRoller: React.FC<{ onRoll: (sides: number) => void }> = ({
+const DiceRoller: React.FC<{ 
+  onRoll?: (sides: number) => void;
+  onResult?: (sides: number, result: number) => void;
+}> = ({
   onRoll,
+  onResult,
 }) => {
   const [isSoundMuted, setIsSoundMuted] = useState(false);
 
@@ -32,7 +36,7 @@ const DiceRoller: React.FC<{ onRoll: (sides: number) => void }> = ({
           className="dice-button bg-green-500 font-bold"
           onClick={() => {
             playSound(); // Reproduce el sonido al presionar el botón
-            onRoll(4);
+            onRoll?.(4);
           }}
         >
           D4
@@ -41,7 +45,7 @@ const DiceRoller: React.FC<{ onRoll: (sides: number) => void }> = ({
           className="dice-button bg-red-500 font-bold"
           onClick={() => {
             playSound();
-            onRoll(6);
+            onRoll?.(6);
           }}
         >
           D6
@@ -50,7 +54,7 @@ const DiceRoller: React.FC<{ onRoll: (sides: number) => void }> = ({
           className="dice-button bg-black font-bold"
           onClick={() => {
             playSound();
-            onRoll(8);
+            onRoll?.(8);
           }}
         >
           D8
@@ -59,7 +63,7 @@ const DiceRoller: React.FC<{ onRoll: (sides: number) => void }> = ({
           className="dice-button bg-orange-600 font-bold"
           onClick={() => {
             playSound();
-            onRoll(10);
+            onRoll?.(10);
           }}
         >
           D10
@@ -68,7 +72,7 @@ const DiceRoller: React.FC<{ onRoll: (sides: number) => void }> = ({
           className="dice-button bg-amber-400 font-bold"
           onClick={() => {
             playSound();
-            onRoll(12);
+            onRoll?.(12);
           }}
         >
           D12
@@ -77,7 +81,7 @@ const DiceRoller: React.FC<{ onRoll: (sides: number) => void }> = ({
           className="dice-button bg-sky-900 font-bold"
           onClick={() => {
             playSound();
-            onRoll(20);
+            onRoll?.(20);
           }}
         >
           D20
@@ -298,7 +302,9 @@ const DiceScene: React.FC<{
   );
 };
 
-const App: React.FC = () => {
+const App: React.FC<{
+  onResult?: (sides: number, result: number) => void;
+}> = ({ onResult }) => {
   const [showScene, setShowScene] = useState(false);
   const [diceType, setDiceType] = useState<number | null>(null);
   const [result, setResult] = useState<number | null>(null);
@@ -310,6 +316,9 @@ const App: React.FC = () => {
 
   const handleAnimationEnd = (result: number) => {
     setResult(result); // Solo se actualiza una vez después de la animación
+    if (diceType && onResult) {
+      onResult(diceType, result);
+    }
   };
 
   const handleComplete = () => {
@@ -318,7 +327,7 @@ const App: React.FC = () => {
 
   return (
     <div className="bg-gray-900 text-white flex flex-col justify-center">
-      <DiceRoller onRoll={handleRoll} />
+      <DiceRoller onRoll={handleRoll} onResult={onResult} />
       {showScene && diceType && (
         <DiceScene
           sides={diceType}

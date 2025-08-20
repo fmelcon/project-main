@@ -1,0 +1,32 @@
+{
+  "name": "dnd-combat-grid-server",
+  "version": "1.0.0",
+  "description": "WebSocket server for D&D Combat Grid multiplayer functionality",
+  "main": "websocket-server.js",
+  "scripts": {
+    "start": "node websocket-server.js",
+    "dev": "nodemon websocket-server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "websocket",
+    "dnd",
+    "combat",
+    "grid",
+    "multiplayer",
+    "realtime"
+  ],
+  "author": "D&D Combat Grid Team",
+  "license": "MIT",
+  "dependencies": {
+    "ws": "^8.14.2",
+    "uuid": "^9.0.1",
+    "@netlify/functions": "^2.4.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
