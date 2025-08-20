@@ -65,6 +65,7 @@ function App() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [fogOfWar, setFogOfWar] = useState<Set<string>>(new Set());
   const [fogEnabled, setFogEnabled] = useState(false);
+  const [permanentlyRevealed, setPermanentlyRevealed] = useState<Set<string>>(new Set());
   
   // Estados de multijugador
   const [isInMultiplayerSession, setIsInMultiplayerSession] = useState(false);
@@ -124,7 +125,12 @@ function App() {
       }
     });
     
-    setFogOfWar(revealedCells);
+    // Agregar nuevas celdas reveladas a las permanentemente reveladas
+    const newPermanentlyRevealed = new Set([...permanentlyRevealed, ...revealedCells]);
+    setPermanentlyRevealed(newPermanentlyRevealed);
+    
+    // Combinar celdas actuales con las permanentemente reveladas
+    setFogOfWar(newPermanentlyRevealed);
   };
 
   // Efecto para revelar áreas alrededor de aliados cuando se muevan o se active la niebla
@@ -148,6 +154,7 @@ function App() {
     tokens,
     drawingData,
     fogOfWar,
+    permanentlyRevealed,
     doors,
     walls,
     backgroundImage,
@@ -158,6 +165,7 @@ function App() {
     setTokens,
     setDrawingData,
     setFogOfWar,
+    setPermanentlyRevealed,
     setDoors,
     setWalls,
     setBackgroundImage,
@@ -167,7 +175,7 @@ function App() {
     setFogEnabled,
     isInSession: isInMultiplayerSession,
     isGM: isGameMaster,
-  }), [tokens, drawingData, fogOfWar, doors, walls, backgroundImage, gridType, selectedTool, selectedColor, fogEnabled, isInMultiplayerSession, isGameMaster]);
+  }), [tokens, drawingData, fogOfWar, permanentlyRevealed, doors, walls, backgroundImage, gridType, selectedTool, selectedColor, fogEnabled, isInMultiplayerSession, isGameMaster]);
   
   const multiplayerSync = useMultiplayerSync(multiplayerSyncProps);
 
@@ -319,9 +327,10 @@ function App() {
 
   const clearFogOfWar = () => {
     setFogOfWar(new Set());
+    setPermanentlyRevealed(new Set()); // También limpiar áreas permanentemente reveladas
     
     // Sincronizar con multijugador
-    multiplayerSync.syncUpdateFog(new Set());
+    multiplayerSync.syncFogUpdate([]);
   };
 
   const handleDoorToggle = (x: number, y: number, type: 'horizontal' | 'vertical') => {
@@ -463,8 +472,8 @@ function App() {
           isOpen={showTokenManager}
           onClose={() => setShowTokenManager(false)}
           tokens={tokens}
-          onTokenUpdate={updateToken}
-          onTokenDelete={removeToken}
+          updateToken={updateToken}
+          removeToken={removeToken}
         />
       </div>
     );
@@ -609,8 +618,8 @@ function App() {
         isOpen={showTokenManager}
         onClose={() => setShowTokenManager(false)}
         tokens={tokens}
-        onTokenUpdate={updateToken}
-        onTokenDelete={removeToken}
+        updateToken={updateToken}
+        removeToken={removeToken}
       />
 
       <footer
