@@ -9,6 +9,8 @@ import {
   Palette,
   Users,
   ExternalLink,
+  Map,
+  FolderOpen,
 } from "lucide-react";
 import TokenEditModal from "./TokenEditModal";
 import TokenManagerPopup from "./TokenManagerPopup";
@@ -36,6 +38,8 @@ interface TokenPanelProps {
   resetGrid: () => void;
   saveGame: () => void;
   loadGame: () => void;
+  saveMap: () => void;
+  loadMap: () => void;
   updateToken: (id: string, newData: unknown) => void; // Nueva función para actualizar los datos del token
   tokens: Array<{
     id: string;
@@ -62,6 +66,8 @@ const TokenPanel: React.FC<TokenPanelProps> = ({
   resetGrid,
   saveGame,
   loadGame,
+  saveMap,
+  loadMap,
   updateToken,
   tokens,
 }) => {
@@ -169,6 +175,23 @@ const TokenPanel: React.FC<TokenPanelProps> = ({
           onClick={loadGame}
         >
           <Upload size={16} /> Load Game
+        </button>
+        
+        {/* Separador */}
+        <div className="border-t border-gray-600 my-2"></div>
+        
+        {/* Botones de Mapa */}
+        <button
+          className="bg-blue-600 hover:bg-blue-700 p-2 rounded flex items-center justify-center gap-1"
+          onClick={saveMap}
+        >
+          <Map size={16} /> Save Map
+        </button>
+        <button
+          className="bg-cyan-600 hover:bg-cyan-700 p-2 rounded flex items-center justify-center gap-1"
+          onClick={loadMap}
+        >
+          <FolderOpen size={16} /> Load Map
         </button>
         <button
           className="p-2 rounded flex items-center justify-center gap-1 initiative-list"

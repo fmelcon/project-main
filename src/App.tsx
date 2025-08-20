@@ -264,6 +264,28 @@ function App() {
     setBackgroundImage(null);
   };
 
+  const saveMap = () => {
+    const mapData = {
+      gridType,
+      backgroundImage,
+      tokens,
+      drawingData,
+      doors: Array.from(doors.entries()), // Convertir Map a Array para JSON
+      walls: Array.from(walls.entries()), // Convertir Map a Array para JSON
+      fogOfWar: Array.from(fogOfWar), // Convertir Set a Array para JSON
+      permanentlyRevealed: Array.from(permanentlyRevealed), // Convertir Set a Array para JSON
+      fogEnabled,
+      savedAt: new Date().toISOString(),
+    };
+
+    const mapName = prompt("Nombre del mapa:", `Mapa_${new Date().toLocaleDateString().replace(/\//g, '-')}`);
+    if (mapName) {
+      localStorage.setItem(`dndMap_${mapName}`, JSON.stringify(mapData));
+      alert(`Mapa "${mapName}" guardado exitosamente!`);
+    }
+  };
+  
+  // Mantener función original para compatibilidad
   const saveGame = () => {
     const gameData = {
       gridType,
@@ -276,6 +298,56 @@ function App() {
     alert("Game saved successfully!");
   };
 
+  const loadMap = () => {
+    // Obtener todos los mapas guardados
+    const savedMaps = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('dndMap_')) {
+        const mapName = key.replace('dndMap_', '');
+        savedMaps.push(mapName);
+      }
+    }
+    
+    if (savedMaps.length === 0) {
+      alert("No hay mapas guardados!");
+      return;
+    }
+    
+    // Mostrar lista de mapas disponibles
+    const mapList = savedMaps.map((name, index) => `${index + 1}. ${name}`).join('\n');
+    const selection = prompt(`Mapas disponibles:\n${mapList}\n\nEscribe el nombre del mapa a cargar:`);
+    
+    if (selection) {
+      const savedMap = localStorage.getItem(`dndMap_${selection}`);
+      if (savedMap) {
+        try {
+          const mapData = JSON.parse(savedMap);
+          
+          // Restaurar todos los estados
+          setGridType(mapData.gridType || 'square');
+          setBackgroundImage(mapData.backgroundImage || null);
+          setTokens(mapData.tokens || []);
+          setDrawingData(mapData.drawingData || []);
+          
+          // Restaurar Maps y Sets desde Arrays
+          setDoors(new Map(mapData.doors || []));
+          setWalls(new Map(mapData.walls || []));
+          setFogOfWar(new Set(mapData.fogOfWar || []));
+          setPermanentlyRevealed(new Set(mapData.permanentlyRevealed || []));
+          setFogEnabled(mapData.fogEnabled || false);
+          
+          alert(`Mapa "${selection}" cargado exitosamente!`);
+        } catch (error) {
+          alert("Error al cargar el mapa. El archivo puede estar corrupto.");
+        }
+      } else {
+        alert("Mapa no encontrado!");
+      }
+    }
+  };
+  
+  // Mantener función original para compatibilidad
   const loadGame = () => {
     const savedGame = localStorage.getItem("dndCombatGrid");
     if (savedGame) {
@@ -440,7 +512,7 @@ function App() {
           </button>
         </div>
         <div className="flex-grow flex items-center justify-center p-4">
-          <div className="relative border-2 border-gray-600 rounded overflow-auto max-h-full max-w-full">
+          <div className="relative border-2 border-gray-600 rounded overflow-auto max-h-full max-w-full grid-scrollable">
             <GridComponent
               gridType={gridType}
               backgroundImage={backgroundImage}
@@ -507,6 +579,8 @@ function App() {
             resetGrid={resetGrid}
             saveGame={saveGame}
             loadGame={loadGame}
+            saveMap={saveMap}
+            loadMap={loadMap}
             updateToken={updateToken} // Nueva función para actualizar los datos del token
             tokens={tokens}
           />
@@ -569,7 +643,7 @@ function App() {
               </div>
             </div>
 
-            <div className="relative border-2 border-gray-600 rounded overflow-hidden">
+            <div className="relative border-2 border-gray-600 rounded overflow-auto max-h-[70vh] max-w-full grid-scrollable">
               <GridComponent
                 gridType={gridType}
                 backgroundImage={backgroundImage}
