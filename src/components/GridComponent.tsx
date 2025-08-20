@@ -521,6 +521,14 @@ const GridComponent: React.FC<GridComponentProps> = ({
       console.log('🧱 DEBUG: Rendering wall at', key, wall);
       const [x, y] = key.split('-').map(Number);
       
+      // Verificar si la pared está oculta por fog of war
+      const cellKey = `${x}-${y}`;
+      const isRevealed = fogEnabled ? fogOfWar.has(cellKey) : true;
+      if (fogEnabled && !isRevealed) {
+        console.log('🌫️ DEBUG: Wall at', key, 'hidden by fog of war');
+        return; // No renderizar pared si está oculta por niebla
+      }
+      
       if (wall.type === 'horizontal') {
         // Pared horizontal en el borde superior de la celda
         const wallStyle: React.CSSProperties = {
@@ -583,6 +591,14 @@ const GridComponent: React.FC<GridComponentProps> = ({
     doors.forEach((door, key) => {
       console.log('🚪 DEBUG: Rendering door at', key, door);
       const [x, y] = key.split('-').map(Number);
+      
+      // Verificar si la puerta está oculta por fog of war
+      const cellKey = `${x}-${y}`;
+      const isRevealed = fogEnabled ? fogOfWar.has(cellKey) : true;
+      if (fogEnabled && !isRevealed) {
+        console.log('🌫️ DEBUG: Door at', key, 'hidden by fog of war');
+        return; // No renderizar puerta si está oculta por niebla
+      }
       
       if (door.type === 'horizontal') {
         // Puerta horizontal en el borde superior de la celda
