@@ -662,6 +662,523 @@ function App() {
     // NO sincronizar colores - cada jugador mantiene su propia selección
   };
 
+  // Generador de dungeons con perímetro sellado y reglas estrictas
+  const generateRandomMap = () => {
+    console.log('🏰 Generating sealed dungeon...');
+    // Limpiar todo primero
+    clearAll();
+    console.log('🧹 Cleared existing content');
+    
+    const GRID_SIZE = 40;
+    const newWalls = new Map();
+    const newDoors = new Map();
+    const newLoots: LootData[] = [];
+    
+    // Tabla de probabilidades por rareza (según especificaciones exactas)
+    const LOOT_RARITY_TABLE = [
+      { rarity: 'common', weight: 60, minValue: 1, maxValue: 50 },
+      { rarity: 'uncommon', weight: 25, minValue: 51, maxValue: 150 },
+      { rarity: 'rare', weight: 10, minValue: 151, maxValue: 500 },
+      { rarity: 'very-rare', weight: 4, minValue: 501, maxValue: 1500 },
+      { rarity: 'legendary', weight: 1, minValue: 1501, maxValue: 5000 }
+    ];
+    
+    const ITEM_TYPES = [
+      'weapon', 'armor', 'shield', 'potion', 'scroll', 'ring', 'amulet', 
+      'gem', 'coin', 'tool', 'book', 'key', 'artifact'
+    ];
+    
+    // Función para seleccionar rareza basada en probabilidades
+    const selectRarityByWeight = () => {
+      const totalWeight = LOOT_RARITY_TABLE.reduce((sum, item) => sum + item.weight, 0);
+      let random = Math.random() * totalWeight;
+      
+      for (const item of LOOT_RARITY_TABLE) {
+        random -= item.weight;
+        if (random <= 0) {
+          return item;
+        }
+      }
+      return LOOT_RARITY_TABLE[0]; // fallback a común
+    };
+    
+    // 1. Crear perímetro sellado completo
+    for (let x = 0; x < GRID_SIZE; x++) {
+      newWalls.set(`${x}-0`, { type: 'horizontal' }); // Borde superior
+      newWalls.set(`${x}-${GRID_SIZE - 1}`, { type: 'horizontal' }); // Borde inferior
+    }
+    for (let y = 0; y < GRID_SIZE; y++) {
+      newWalls.set(`0-${y}`, { type: 'vertical' }); // Borde izquierdo
+      newWalls.set(`${GRID_SIZE - 1}-${y}`, { type: 'vertical' }); // Borde derecho
+    }
+    
+    console.log('🛡️ Sealed perimeter created');
+    
+    // 2. Generar 6-12 habitaciones rectangulares (mínimo 5x5)
+    const rooms: Array<{x: number, y: number, width: number, height: number, id: number}> = [];
+    const numRooms = Math.floor(Math.random() * 7) + 6; // 6-12 habitaciones
+    
+    for (let i = 0; i < numRooms; i++) {
+      let attempts = 0;
+      while (attempts < 150) {
+        const width = Math.floor(Math.random() * 6) + 5; // 5-10 de ancho (mínimo 5x5)
+        const height = Math.floor(Math.random() * 6) + 5; // 5-10 de alto (mínimo 5x5)
+        // Asegurar que las habitaciones no toquen el perímetro
+        const x = Math.floor(Math.random() * (GRID_SIZE - width - 6)) + 3;
+        const y = Math.floor(Math.random() * (GRID_SIZE - height - 6)) + 3;
+        
+        // Verificar que no se superponga con otras habitaciones
+        let overlaps = false;
+        for (const room of rooms) {
+          if (x < room.x + room.width + 3 && x + width + 3 > room.x &&
+              y < room.y + room.height + 3 && y + height + 3 > room.y) {
+            overlaps = true;
+            break;
+          }
+        }
+        
+        if (!overlaps) {
+          rooms.push({x, y, width, height, id: i});
+          break;
+        }
+        attempts++;
+      }
+    }
+    
+    console.log('🏠 Generated rooms:', rooms.length, 'rooms (min 5x5 each, away from perimeter)');
+    
+    // 3. Crear paredes alrededor de todas las habitaciones
+    rooms.forEach(room => {
+      // Paredes horizontales (arriba y abajo)
+      for (let x = room.x - 1; x <= room.x + room.width; x++) {
+        newWalls.set(`${x}-${room.y - 1}`, { type: 'horizontal' });
+        newWalls.set(`${x}-${room.y + room.height}`, { type: 'horizontal' });
+      }
+      // Paredes verticales (izquierda y derecha)
+      for (let y = room.y - 1; y <= room.y + room.height; y++) {
+        newWalls.set(`${room.x - 1}-${y}`, { type: 'vertical' });
+        newWalls.set(`${room.x + room.width}-${y}`, { type: 'vertical' });
+      }
+    });
+    
+    // 4. Implementar algoritmo MST con validación de perímetro
+    // Calcular distancias entre todas las habitaciones
+    const edges: Array<{roomA: number, roomB: number, distance: number}> = [];
+    
+    for (let i = 0; i < rooms.length; i++) {
+      for (let j = i + 1; j < rooms.length; j++) {
+        const roomA = rooms[i];
+        const roomB = rooms[j];
+        
+        const centerAX = Math.floor(roomA.x + roomA.width / 2);
+        const centerAY = Math.floor(roomA.y + roomA.height / 2);
+        const centerBX = Math.floor(roomB.x + roomB.width / 2);
+        const centerBY = Math.floor(roomB.y + roomB.height / 2);
+        
+        const distance = Math.abs(centerAX - centerBX) + Math.abs(centerAY - centerBY);
+        edges.push({roomA: i, roomB: j, distance});
+      }
+    }
+    
+    // Ordenar edges por distancia (algoritmo de Kruskal)
+    edges.sort((a, b) => a.distance - b.distance);
+    
+    // Implementar Union-Find para MST
+    const parent: number[] = [];
+    const rank: number[] = [];
+    
+    for (let i = 0; i < rooms.length; i++) {
+      parent[i] = i;
+      rank[i] = 0;
+    }
+    
+    const find = (x: number): number => {
+      if (parent[x] !== x) {
+        parent[x] = find(parent[x]);
+      }
+      return parent[x];
+    };
+    
+    const union = (x: number, y: number): boolean => {
+      const rootX = find(x);
+      const rootY = find(y);
+      
+      if (rootX === rootY) return false;
+      
+      if (rank[rootX] < rank[rootY]) {
+        parent[rootX] = rootY;
+      } else if (rank[rootX] > rank[rootY]) {
+        parent[rootY] = rootX;
+      } else {
+        parent[rootY] = rootX;
+        rank[rootX]++;
+      }
+      return true;
+    };
+    
+    // Construir MST usando algoritmo de Kruskal
+    const mstEdges: Array<{roomA: number, roomB: number}> = [];
+    
+    for (const edge of edges) {
+      if (union(edge.roomA, edge.roomB)) {
+        mstEdges.push({roomA: edge.roomA, roomB: edge.roomB});
+        if (mstEdges.length === rooms.length - 1) break;
+      }
+    }
+    
+    console.log('🌳 MST connections:', mstEdges.length, 'corridors connecting all rooms');
+    
+    // 5. Crear pasillos rectos con paredes laterales (sin romper perímetro)
+    const corridors: Array<{x1: number, y1: number, x2: number, y2: number, width: number, roomA: number, roomB: number}> = [];
+    
+    mstEdges.forEach(edge => {
+      const roomA = rooms[edge.roomA];
+      const roomB = rooms[edge.roomB];
+      
+      const centerAX = Math.floor(roomA.x + roomA.width / 2);
+      const centerAY = Math.floor(roomA.y + roomA.height / 2);
+      const centerBX = Math.floor(roomB.x + roomB.width / 2);
+      const centerBY = Math.floor(roomB.y + roomB.height / 2);
+      
+      const corridorWidth = Math.random() < 0.3 ? 2 : 1; // 30% probabilidad de pasillo ancho
+      
+      // Crear pasillo en L (siempre rectos: horizontal + vertical)
+      if (Math.abs(centerAX - centerBX) > Math.abs(centerAY - centerBY)) {
+        // Horizontal primero
+        const startX = Math.min(centerAX, centerBX);
+        const endX = Math.max(centerAX, centerBX);
+        corridors.push({x1: startX, y1: centerAY, x2: endX, y2: centerAY, width: corridorWidth, roomA: edge.roomA, roomB: edge.roomB});
+        
+        // Vertical después
+        const startY = Math.min(centerAY, centerBY);
+        const endY = Math.max(centerAY, centerBY);
+        corridors.push({x1: centerBX, y1: startY, x2: centerBX, y2: endY, width: corridorWidth, roomA: edge.roomA, roomB: edge.roomB});
+      } else {
+        // Vertical primero
+        const startY = Math.min(centerAY, centerBY);
+        const endY = Math.max(centerAY, centerBY);
+        corridors.push({x1: centerAX, y1: startY, x2: centerAX, y2: endY, width: corridorWidth, roomA: edge.roomA, roomB: edge.roomB});
+        
+        // Horizontal después
+        const startX = Math.min(centerAX, centerBX);
+        const endX = Math.max(centerAX, centerBX);
+        corridors.push({x1: startX, y1: centerBY, x2: endX, y2: centerBY, width: corridorWidth, roomA: edge.roomA, roomB: edge.roomB});
+      }
+    });
+    
+    // 6. Crear paredes de pasillos (con validación de perímetro)
+    corridors.forEach(corridor => {
+      if (corridor.x1 === corridor.x2) {
+        // Pasillo vertical
+        const startY = Math.min(corridor.y1, corridor.y2);
+        const endY = Math.max(corridor.y1, corridor.y2);
+        for (let y = startY; y <= endY; y++) {
+          for (let w = 0; w < corridor.width; w++) {
+            // Paredes a los lados (sin tocar perímetro)
+            const leftWallX = corridor.x1 - 1 - w;
+            const rightWallX = corridor.x1 + 1 + w;
+            if (leftWallX > 0) {
+              newWalls.set(`${leftWallX}-${y}`, { type: 'vertical' });
+            }
+            if (rightWallX < GRID_SIZE - 1) {
+              newWalls.set(`${rightWallX}-${y}`, { type: 'vertical' });
+            }
+          }
+        }
+      } else {
+        // Pasillo horizontal
+        const startX = Math.min(corridor.x1, corridor.x2);
+        const endX = Math.max(corridor.x1, corridor.x2);
+        for (let x = startX; x <= endX; x++) {
+          for (let w = 0; w < corridor.width; w++) {
+            // Paredes arriba y abajo (sin tocar perímetro)
+            const topWallY = corridor.y1 - 1 - w;
+            const bottomWallY = corridor.y1 + 1 + w;
+            if (topWallY > 0) {
+              newWalls.set(`${x}-${topWallY}`, { type: 'horizontal' });
+            }
+            if (bottomWallY < GRID_SIZE - 1) {
+              newWalls.set(`${x}-${bottomWallY}`, { type: 'horizontal' });
+            }
+          }
+        }
+      }
+    });
+    
+    // 7. Crear puertas SOLO en conexiones válidas pasillo-habitación
+    const doorPositions: Array<{x: number, y: number}> = [];
+    
+    // Para cada conexión MST, crear puertas donde el pasillo toca las habitaciones
+    mstEdges.forEach(edge => {
+      const roomA = rooms[edge.roomA];
+      const roomB = rooms[edge.roomB];
+      
+      // Encontrar puntos de conexión exactos entre pasillos y habitaciones
+      const centerAX = Math.floor(roomA.x + roomA.width / 2);
+      const centerAY = Math.floor(roomA.y + roomA.height / 2);
+      const centerBX = Math.floor(roomB.x + roomB.width / 2);
+      const centerBY = Math.floor(roomB.y + roomB.height / 2);
+      
+      // Crear puertas en puntos de conexión específicos
+      if (Math.abs(centerAX - centerBX) > Math.abs(centerAY - centerBY)) {
+        // Conexión horizontal-vertical
+        
+        // Puerta para roomA (conexión horizontal)
+        if (centerAX < centerBX) {
+          // Pasillo sale por la derecha de roomA
+          const doorX = roomA.x + roomA.width;
+          const doorY = centerAY;
+          if (doorY >= roomA.y && doorY < roomA.y + roomA.height) {
+            newWalls.delete(`${doorX}-${doorY}`);
+            const doorState = Math.random();
+            const isOpen = doorState < 0.4; // 40% abierta
+            const needsKey = !isOpen && doorState > 0.8; // 20% con llave
+            
+            newDoors.set(`${doorX}-${doorY}`, { 
+              type: 'vertical', 
+              isOpen: isOpen,
+              needsKey: needsKey
+            });
+            doorPositions.push({x: doorX, y: doorY});
+          }
+        } else {
+          // Pasillo sale por la izquierda de roomA
+          const doorX = roomA.x - 1;
+          const doorY = centerAY;
+          if (doorY >= roomA.y && doorY < roomA.y + roomA.height) {
+            newWalls.delete(`${doorX}-${doorY}`);
+            const doorState = Math.random();
+            const isOpen = doorState < 0.4;
+            const needsKey = !isOpen && doorState > 0.8;
+            
+            newDoors.set(`${doorX}-${doorY}`, { 
+              type: 'vertical', 
+              isOpen: isOpen,
+              needsKey: needsKey
+            });
+            doorPositions.push({x: doorX, y: doorY});
+          }
+        }
+        
+        // Puerta para roomB (conexión vertical)
+        if (centerAY < centerBY) {
+          // Pasillo llega por arriba de roomB
+          const doorX = centerBX;
+          const doorY = roomB.y - 1;
+          if (doorX >= roomB.x && doorX < roomB.x + roomB.width) {
+            newWalls.delete(`${doorX}-${doorY}`);
+            const doorState = Math.random();
+            const isOpen = doorState < 0.4;
+            const needsKey = !isOpen && doorState > 0.8;
+            
+            newDoors.set(`${doorX}-${doorY}`, { 
+              type: 'horizontal', 
+              isOpen: isOpen,
+              needsKey: needsKey
+            });
+            doorPositions.push({x: doorX, y: doorY});
+          }
+        } else {
+          // Pasillo llega por abajo de roomB
+          const doorX = centerBX;
+          const doorY = roomB.y + roomB.height;
+          if (doorX >= roomB.x && doorX < roomB.x + roomB.width) {
+            newWalls.delete(`${doorX}-${doorY}`);
+            const doorState = Math.random();
+            const isOpen = doorState < 0.4;
+            const needsKey = !isOpen && doorState > 0.8;
+            
+            newDoors.set(`${doorX}-${doorY}`, { 
+              type: 'horizontal', 
+              isOpen: isOpen,
+              needsKey: needsKey
+            });
+            doorPositions.push({x: doorX, y: doorY});
+          }
+        }
+      } else {
+        // Conexión vertical-horizontal
+        
+        // Puerta para roomA (conexión vertical)
+        if (centerAY < centerBY) {
+          // Pasillo sale por abajo de roomA
+          const doorX = centerAX;
+          const doorY = roomA.y + roomA.height;
+          if (doorX >= roomA.x && doorX < roomA.x + roomA.width) {
+            newWalls.delete(`${doorX}-${doorY}`);
+            const doorState = Math.random();
+            const isOpen = doorState < 0.4;
+            const needsKey = !isOpen && doorState > 0.8;
+            
+            newDoors.set(`${doorX}-${doorY}`, { 
+              type: 'horizontal', 
+              isOpen: isOpen,
+              needsKey: needsKey
+            });
+            doorPositions.push({x: doorX, y: doorY});
+          }
+        } else {
+          // Pasillo sale por arriba de roomA
+          const doorX = centerAX;
+          const doorY = roomA.y - 1;
+          if (doorX >= roomA.x && doorX < roomA.x + roomA.width) {
+            newWalls.delete(`${doorX}-${doorY}`);
+            const doorState = Math.random();
+            const isOpen = doorState < 0.4;
+            const needsKey = !isOpen && doorState > 0.8;
+            
+            newDoors.set(`${doorX}-${doorY}`, { 
+              type: 'horizontal', 
+              isOpen: isOpen,
+              needsKey: needsKey
+            });
+            doorPositions.push({x: doorX, y: doorY});
+          }
+        }
+        
+        // Puerta para roomB (conexión horizontal)
+        if (centerAX < centerBX) {
+          // Pasillo llega por la izquierda de roomB
+          const doorX = roomB.x - 1;
+          const doorY = centerBY;
+          if (doorY >= roomB.y && doorY < roomB.y + roomB.height) {
+            newWalls.delete(`${doorX}-${doorY}`);
+            const doorState = Math.random();
+            const isOpen = doorState < 0.4;
+            const needsKey = !isOpen && doorState > 0.8;
+            
+            newDoors.set(`${doorX}-${doorY}`, { 
+              type: 'vertical', 
+              isOpen: isOpen,
+              needsKey: needsKey
+            });
+            doorPositions.push({x: doorX, y: doorY});
+          }
+        } else {
+          // Pasillo llega por la derecha de roomB
+          const doorX = roomB.x + roomB.width;
+          const doorY = centerBY;
+          if (doorY >= roomB.y && doorY < roomB.y + roomB.height) {
+            newWalls.delete(`${doorX}-${doorY}`);
+            const doorState = Math.random();
+            const isOpen = doorState < 0.4;
+            const needsKey = !isOpen && doorState > 0.8;
+            
+            newDoors.set(`${doorX}-${doorY}`, { 
+              type: 'vertical', 
+              isOpen: isOpen,
+              needsKey: needsKey
+            });
+            doorPositions.push({x: doorX, y: doorY});
+          }
+        }
+      }
+    });
+    
+    // 8. Distribuir loot SOLO en habitaciones con probabilidades exactas
+    rooms.forEach(room => {
+      const roomSize = room.width * room.height;
+      const isLargeRoom = roomSize >= 49; // 7x7 o más
+      
+      // Determinar cantidad de loot basado en tamaño de habitación
+      const baseNumLoots = isLargeRoom ? 
+        Math.floor(Math.random() * 2) + 2 : // 2-3 loots en habitaciones grandes
+        Math.floor(Math.random() * 2) + 1;   // 1-2 loots en habitaciones normales
+      
+      for (let l = 0; l < baseNumLoots; l++) {
+        const lootX = room.x + Math.floor(Math.random() * room.width);
+        const lootY = room.y + Math.floor(Math.random() * room.height);
+        
+        // Evitar colocar loot en puertas
+        const isDoorPosition = doorPositions.some(door => door.x === lootX && door.y === lootY);
+        if (isDoorPosition) continue;
+        
+        // Seleccionar rareza usando tabla de probabilidades exacta
+        const rarityData = selectRarityByWeight();
+        
+        // En habitaciones grandes, aumentar probabilidad de loot raro/legendario
+        let finalRarityData = rarityData;
+        if (isLargeRoom && rarityData.rarity === 'common' && Math.random() < 0.4) {
+          // 40% chance de upgrade en habitaciones grandes
+          const upgradeRoll = Math.random();
+          if (upgradeRoll < 0.5) {
+            finalRarityData = LOOT_RARITY_TABLE[2]; // rare
+          } else if (upgradeRoll < 0.8) {
+            finalRarityData = LOOT_RARITY_TABLE[3]; // very-rare
+          } else {
+            finalRarityData = LOOT_RARITY_TABLE[4]; // legendary
+          }
+        }
+        
+        const itemType = ITEM_TYPES[Math.floor(Math.random() * ITEM_TYPES.length)];
+        const numItems = Math.floor(Math.random() * 3) + 1; // 1-3 items
+        
+        const items = [];
+        for (let i = 0; i < numItems; i++) {
+          const value = Math.floor(Math.random() * (finalRarityData.maxValue - finalRarityData.minValue + 1)) + finalRarityData.minValue;
+          
+          items.push({
+            id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            name: `${finalRarityData.rarity.charAt(0).toUpperCase() + finalRarityData.rarity.slice(1)} ${itemType}`,
+            type: itemType,
+            rarity: finalRarityData.rarity,
+            value: value,
+            description: `A ${finalRarityData.rarity} ${itemType} found in ${isLargeRoom ? 'a large chamber' : 'the dungeon'}.`
+          });
+        }
+        
+        const lootData: LootData = {
+          id: `loot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          x: lootX,
+          y: lootY,
+          items: items,
+          isLooted: false
+        };
+        
+        newLoots.push(lootData);
+      }
+    });
+    
+    const largeRooms = rooms.filter(room => room.width * room.height >= 49);
+    console.log('🚪 Generated doors:', doorPositions.length, '(only at corridor-room connections)');
+    console.log('💰 Generated loot chests:', newLoots.length, 'with exact rarity probabilities');
+    console.log('🏛️ Large rooms:', largeRooms.length, '(enhanced loot probability)');
+    console.log('💎 Rare+ items:', newLoots.filter(l => l.items.some(i => ['rare', 'very-rare', 'legendary'].includes(i.rarity))).length, 'chests');
+    
+    // Aplicar todos los cambios
+    console.log('🏗️ Applying changes:', {
+      walls: newWalls.size,
+      doors: newDoors.size,
+      loots: newLoots.length
+    });
+    
+    setWalls(newWalls);
+    setDoors(newDoors);
+    setLoots(newLoots);
+    
+    console.log('✅ Dungeon generation complete!');
+    
+    // Sincronizar con multijugador
+    if (isInMultiplayerSession) {
+      console.log('🌐 Syncing with multiplayer...');
+      // Sincronizar paredes
+      newWalls.forEach((wallData, wallKey) => {
+        multiplayerSync.syncUpdateWall(wallKey, wallData);
+      });
+      
+      // Sincronizar puertas
+      newDoors.forEach((doorData, doorKey) => {
+        multiplayerSync.syncUpdateDoor(doorKey, doorData);
+      });
+      
+      // Sincronizar loot
+      newLoots.forEach(loot => {
+        multiplayerSync.syncAddLoot(loot);
+      });
+      console.log('🌐 Multiplayer sync complete!');
+    }
+  };
+
   // Render en modo pantalla completa
   if (isFullscreen) {
     return (
@@ -974,6 +1491,7 @@ function App() {
             fogEnabled={fogEnabled}
             toggleFogOfWar={toggleFogOfWar}
             clearAll={clearAll}
+            generateRandomMap={generateRandomMap}
           />
         </div>
       </main>

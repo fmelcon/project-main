@@ -1211,7 +1211,7 @@ const GridComponent: React.FC<GridComponentProps> = ({
         border: '3px solid #8B4513',
         borderRadius: '8px',
         zIndex: 12,
-        cursor: selectedTool === 'loot' ? 'pointer' : 'default',
+        cursor: 'pointer',
         pointerEvents: 'auto',
         boxShadow: '0 4px 8px rgba(0,0,0,0.4)',
         transition: 'all 0.2s ease',
@@ -1230,20 +1230,13 @@ const GridComponent: React.FC<GridComponentProps> = ({
             filter: hasRareItems ? 'drop-shadow(0 0 8px gold)' : 'none',
           }}
           onClick={() => {
-            if (selectedTool === 'loot') {
-              onLootEdit(loot);
-            }
+            onLootEdit(loot);
           }}
           onContextMenu={(e) => {
-            if (selectedTool === 'loot') {
-              e.preventDefault();
-              onLootDelete(loot.id);
-            }
+            e.preventDefault();
+            onLootDelete(loot.id);
           }}
-          title={selectedTool === 'loot' ? 
-            `${loot.isLooted ? 'Empty' : `${itemCount} items`} - Click to edit, right-click to delete` : 
-            `Loot chest (${loot.isLooted ? 'Empty' : `${itemCount} items`})`
-          }
+          title={`${loot.isLooted ? 'Empty' : `${itemCount} items`} - Click to edit, right-click to delete`}
         >
           {loot.isLooted ? '📦' : '💰'}
           {!loot.isLooted && itemCount > 0 && (

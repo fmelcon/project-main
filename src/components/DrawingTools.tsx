@@ -1,5 +1,5 @@
 import React from "react";
-import { Pencil, PaintBucket, Square, Move, Trash2, Eye, EyeOff, DoorOpen, Minus, RotateCcw, Type, Coins, Eraser } from "lucide-react";
+import { Pencil, PaintBucket, Square, Move, Trash2, Eye, EyeOff, DoorOpen, Minus, RotateCcw, Type, Coins, Eraser, Shuffle } from "lucide-react";
 
 interface DrawingToolsProps {
   selectedTool: "move" | "draw" | "erase" | "fill" | "square" | "fog" | "door-h" | "door-v" | "wall-h" | "wall-v" | "text" | "loot";
@@ -11,6 +11,7 @@ interface DrawingToolsProps {
   fogEnabled: boolean;
   toggleFogOfWar: () => void;
   clearAll: () => void;
+  generateRandomMap: () => void;
 }
 
 const DrawingTools: React.FC<DrawingToolsProps> = ({
@@ -21,6 +22,7 @@ const DrawingTools: React.FC<DrawingToolsProps> = ({
   fogEnabled,
   toggleFogOfWar,
   clearAll,
+  generateRandomMap,
 }) => {
   const colors = [
     "#e74c3c", // Red
@@ -135,6 +137,13 @@ const DrawingTools: React.FC<DrawingToolsProps> = ({
           title="Clear Everything (Drawings, Texts, Loot, Doors, Walls, Fog)"
         >
           <Trash2 size={20} />
+        </button>
+        <button
+          className="tool-button bg-purple-600 hover:bg-purple-700 border-purple-500"
+          onClick={generateRandomMap}
+          title="Generate Random Dungeon (Walls, Doors, Loot)"
+        >
+          <Shuffle size={20} />
         </button>
       </div>
 
