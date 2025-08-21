@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { List, ChevronRight, ChevronDown, Sword, Shield, Crown } from "lucide-react";
 
 interface InitiativeListProps {
@@ -13,6 +13,7 @@ interface InitiativeListProps {
 
 const InitiativeList: React.FC<InitiativeListProps> = ({ tokens }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const touchHandledRef = useRef(false);
   
   // Ordenar los tokens por iniciativa (de mayor a menor)
   const sortedTokens = [...tokens].sort(
@@ -38,10 +39,21 @@ const InitiativeList: React.FC<InitiativeListProps> = ({ tokens }) => {
   };
 
   return (
-    <div className="fixed right-4 top-1/2 transform -translate-y-1/2 z-50">
+    <div className="fixed right-4 top-1/4 transform -translate-y-1/2 z-50">
       {/* Botón Toggle */}
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={(e) => {
+          if (!touchHandledRef.current) {
+            setIsOpen(!isOpen);
+          }
+          touchHandledRef.current = false;
+        }}
+        onTouchStart={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          touchHandledRef.current = true;
+          setIsOpen(!isOpen);
+        }}
         className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white p-3 rounded-l-lg shadow-lg transition-all duration-300 hover:scale-105 flex items-center gap-2"
         title="Toggle Initiative Order"
       >

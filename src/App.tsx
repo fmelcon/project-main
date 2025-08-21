@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   Search,
   Plus,
@@ -110,7 +110,7 @@ function App() {
   };
 
   // Función para revelar áreas alrededor de tokens aliados
-  const revealAroundAllies = () => {
+  const revealAroundAllies = useCallback(() => {
     if (!fogEnabled) return;
     
     const revealedCells = new Set<string>();
@@ -143,7 +143,7 @@ function App() {
     
     // Combinar celdas actuales con las permanentemente reveladas
     setFogOfWar(newPermanentlyRevealed);
-  };
+  }, [tokens, fogEnabled, permanentlyRevealed]);
 
   // Efecto para revelar áreas alrededor de aliados cuando se muevan o se active la niebla
   // Usar useRef para evitar loops infinitos
@@ -159,7 +159,7 @@ function App() {
       lastFogEnabledRef.current = fogEnabled;
       revealAroundAllies();
     }
-  }, [tokens, fogEnabled]);
+  }, [revealAroundAllies]);
 
   // Hook de sincronización multijugador (memoizado para evitar recreación)
   const multiplayerSyncProps = useMemo(() => ({
@@ -647,20 +647,6 @@ function App() {
     return (
       <div className="fixed inset-0 bg-gray-900 text-white flex flex-col z-50">
         <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
-          {/* Token Manager Button */}
-          <button
-            onClick={() => setShowTokenManager(true)}
-            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 p-3 rounded-lg flex items-center justify-center gap-2 transition-all hover:scale-105 shadow-lg"
-          >
-            <Users size={18} />
-            <span className="font-semibold">Token Manager</span>
-            <ExternalLink size={16} />
-            {tokens.length > 0 && (
-              <span className="bg-white/20 px-2 py-1 rounded-full text-xs font-bold">
-                {tokens.length}
-              </span>
-            )}
-          </button>
           
           {/* Exit Fullscreen Button */}
           <button
@@ -709,6 +695,7 @@ function App() {
                 setShowLootModal(true);
               }}
               onEraseCell={eraseCell}
+              onOpenTokenManager={() => setShowTokenManager(true)}
             />
           </div>
         </div>
@@ -880,7 +867,8 @@ function App() {
                   setShowLootModal(true);
                 }}
                 onEraseCell={eraseCell}
-              />
+                 onOpenTokenManager={() => setShowTokenManager(true)}
+               />
             </div>
           </div>
 

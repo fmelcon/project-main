@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState } from "react";
 import TokenTooltip from "./TokenTooltip";
+import FloatingTokenManager from "./FloatingTokenManager";
 import { TextData } from "./TextEditModal";
 import { LootData } from "./LootEditModal";
 
@@ -49,6 +50,7 @@ interface GridComponentProps {
   onLootDelete: (id: string) => void;
   onLootPlace: (x: number, y: number) => void;
   onEraseCell: (gridX: number, gridY: number) => void;
+  onOpenTokenManager: () => void;
 }
 
 const getContrastColor = (hexcolor: string): string => {
@@ -95,6 +97,7 @@ const GridComponent: React.FC<GridComponentProps> = ({
   onLootDelete,
   onLootPlace,
   onEraseCell,
+  onOpenTokenManager,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
@@ -221,6 +224,7 @@ const GridComponent: React.FC<GridComponentProps> = ({
     field: 'name' | 'ac' | 'currentHp' | 'initiative';
     value: string;
   } | null>(null);
+
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const longPressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -950,15 +954,28 @@ const GridComponent: React.FC<GridComponentProps> = ({
           }}
           onTouchStart={(e) => {
             e.stopPropagation();
+            
             longPressTimeoutRef.current = setTimeout(() => {
-              const touch = e.touches[0];
-              const fakeEvent = {
-                preventDefault: () => {},
-                stopPropagation: () => {},
-                clientX: touch.clientX,
-                clientY: touch.clientY
-              } as React.MouseEvent;
-              showContextMenu(fakeEvent, token.id);
+              // Long press para editar token en móviles
+              if (token.type === 'ally' || token.type === 'enemy') {
+                if (onTokenUpdate) {
+                  // Abrir modal de edición directamente
+                  const newName = prompt('Nombre del token:', token.name || '');
+                  if (newName !== null) {
+                    onTokenUpdate(token.id, { name: newName });
+                  }
+                }
+              } else {
+                // Para otros casos, mostrar menú contextual
+                const touch = e.touches[0];
+                const fakeEvent = {
+                  preventDefault: () => {},
+                  stopPropagation: () => {},
+                  clientX: touch.clientX,
+                  clientY: touch.clientY
+                } as React.MouseEvent;
+                showContextMenu(fakeEvent, token.id);
+              }
             }, 500);
           }}
           onTouchEnd={(e) => {
@@ -1086,7 +1103,11 @@ const GridComponent: React.FC<GridComponentProps> = ({
             ...lootStyle,
             filter: hasRareItems ? 'drop-shadow(0 0 8px gold)' : 'none',
           }}
-          onClick={() => selectedTool === 'loot' && onLootEdit(loot)}
+          onClick={() => {
+            if (selectedTool === 'loot') {
+              onLootEdit(loot);
+            }
+          }}
           onContextMenu={(e) => {
             if (selectedTool === 'loot') {
               e.preventDefault();
@@ -1333,6 +1354,14 @@ const GridComponent: React.FC<GridComponentProps> = ({
           onClick={hideContextMenu}
         />
       )}
+      
+
+      
+      {/* Floating Token Manager */}
+      <FloatingTokenManager 
+        onOpen={onOpenTokenManager}
+        tokenCount={tokens.length}
+      />
     </div>
   );
 };

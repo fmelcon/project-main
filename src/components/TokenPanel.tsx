@@ -144,7 +144,7 @@ const TokenPanel: React.FC<TokenPanelProps> = ({
       </div>
 
       {/* Token Management Button */}
-      <div className="mt-4">
+      <div className="mt-4 hidden">
         <button
           onClick={() => setIsTokenManagerOpen(true)}
           className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 p-3 rounded-lg flex items-center justify-center gap-2 transition-all hover:scale-105 shadow-lg"
