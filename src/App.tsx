@@ -696,6 +696,9 @@ function App() {
               }}
               onEraseCell={eraseCell}
               onOpenTokenManager={() => setShowTokenManager(true)}
+              onAddAlly={() => addToken('ally', {})}
+              onAddEnemy={() => addToken('enemy', {})}
+              onAddBoss={() => addToken('boss', {})}
             />
           </div>
         </div>
@@ -805,6 +808,12 @@ function App() {
                   Octagonal Grid
                 </button>
                 <button
+                  className="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded flex items-center gap-1 transition-all"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Upload size={16} /> Upload Map
+                </button>
+                <button
                   className="bg-green-600 hover:bg-green-700 px-3 py-1 rounded flex items-center gap-1 transition-all"
                   onClick={toggleFullscreen}
                 >
@@ -812,21 +821,13 @@ function App() {
                   {isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
                 </button>
               </div>
-              <div className="flex gap-2">
-                <button
-                  className="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded flex items-center gap-1 transition-all"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Upload size={16} /> Upload Map
-                </button>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  className="hidden"
-                  accept="image/*"
-                  onChange={handleBackgroundUpload}
-                />
-              </div>
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                accept="image/*"
+                onChange={handleBackgroundUpload}
+              />
             </div>
 
             <div className="relative border-2 border-gray-600 rounded overflow-auto max-h-[70vh] max-w-full grid-scrollable">
@@ -868,6 +869,9 @@ function App() {
                 }}
                 onEraseCell={eraseCell}
                  onOpenTokenManager={() => setShowTokenManager(true)}
+                 onAddAlly={() => addToken('ally', {})}
+                 onAddEnemy={() => addToken('enemy', {})}
+                 onAddBoss={() => addToken('boss', {})}
                />
             </div>
           </div>

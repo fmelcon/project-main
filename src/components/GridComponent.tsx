@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from "react";
 import TokenTooltip from "./TokenTooltip";
 import FloatingTokenManager from "./FloatingTokenManager";
+import FloatingTokenButtons from "./FloatingTokenButtons";
 import { TextData } from "./TextEditModal";
 import { LootData } from "./LootEditModal";
 
@@ -51,6 +52,9 @@ interface GridComponentProps {
   onLootPlace: (x: number, y: number) => void;
   onEraseCell: (gridX: number, gridY: number) => void;
   onOpenTokenManager: () => void;
+  onAddAlly: () => void;
+  onAddEnemy: () => void;
+  onAddBoss: () => void;
 }
 
 const getContrastColor = (hexcolor: string): string => {
@@ -98,6 +102,9 @@ const GridComponent: React.FC<GridComponentProps> = ({
   onLootPlace,
   onEraseCell,
   onOpenTokenManager,
+  onAddAlly,
+  onAddEnemy,
+  onAddBoss,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
@@ -877,7 +884,7 @@ const GridComponent: React.FC<GridComponentProps> = ({
       }
       
       const isBoss = token.type === "boss";
-      const tokenSize = isBoss ? CELL_SIZE * 2 : CELL_SIZE;
+      const tokenSize = CELL_SIZE; // Todos los tokens tienen el mismo tamaño
       const tokenColor =
         token.color ||
         (token.type === "ally"
@@ -1356,6 +1363,13 @@ const GridComponent: React.FC<GridComponentProps> = ({
       )}
       
 
+      
+      {/* Floating Token Buttons */}
+      <FloatingTokenButtons 
+        onAddAlly={onAddAlly}
+        onAddEnemy={onAddEnemy}
+        onAddBoss={onAddBoss}
+      />
       
       {/* Floating Token Manager */}
       <FloatingTokenManager 

@@ -39,7 +39,7 @@ const InitiativeList: React.FC<InitiativeListProps> = ({ tokens }) => {
   };
 
   return (
-    <div className="fixed right-4 top-1/4 transform -translate-y-1/2 z-50">
+    <div className="fixed right-4 top-48 z-50">
       {/* Botón Toggle */}
       <button
         onClick={(e) => {

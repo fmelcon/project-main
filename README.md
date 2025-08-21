@@ -35,16 +35,48 @@ Una aplicación web moderna y completa para gestionar combates de Dungeons & Dra
 - **Paredes**: Sistema completo horizontal y vertical
 - **Colocación precisa**: En bordes de casilleros para realismo
 
+### 📝 **Sistema de Texto y Letreros**
+- **Herramienta de texto**: Coloca letreros informativos en el mapa
+- **Editor avanzado**: Modal con opciones de personalización
+- **Estilos configurables**: Tamaño, color, fondo y transparencia
+- **Posicionamiento libre**: Coloca texto en cualquier casillero
+- **Sincronización multijugador**: Textos visibles para todos los jugadores
+
+### 💰 **Sistema de Loot y Tesoros**
+- **Cofres interactivos**: Coloca cofres de tesoro en el mapa
+- **Generador automático**: Loot aleatorio con raridades mágicas
+- **Editor de contenido**: Personaliza items, cantidades y raridades
+- **Estados visuales**: Cofres intactos vs saqueados
+- **Efectos especiales**: Brillo dorado para items raros
+- **Proximidad realista**: Solo visible el contenido con aliado cerca
+
+### 🧹 **Goma Selectiva Avanzada**
+- **Borrado inteligente**: Elimina elementos específicos por celda
+- **Múltiples tipos**: Textos, loot, puertas, muros y dibujos
+- **Precisión quirúrgica**: Borra solo lo que necesitas
+- **Sincronización**: Cambios reflejados en tiempo real
+
 ### 🎲 **Sistema de Dados Inmersivo**
-- **Roller visual**: Animaciones 3D realistas
+- **Roller visual**: Animaciones 3D realistas y aceleradas
 - **Efectos de sonido**: Audio inmersivo para cada tirada
 - **Múltiples dados**: d4, d6, d8, d10, d12, d20, d100
+- **Animaciones rápidas**: 60% más veloces para combates ágiles
+- **Texturas espectaculares**: Patrones únicos por tipo de dado
 - **Historial**: Registro de todas las tiradas
 
-### 📋 **Lista de Iniciativa**
+### 📋 **Lista de Iniciativa Flotante**
+- **Panel flotante**: Toggle en margen derecho, siempre accesible
 - **Ordenamiento automático**: Por valor de iniciativa
 - **Gestión de turnos**: Seguimiento del orden de combate
 - **Integración con tokens**: Sincronización automática
+- **Diseño profesional**: Gradientes y efectos visuales premium
+- **Soporte touch**: Funciona perfectamente en tablets y móviles
+
+### 👥 **Token Manager Flotante**
+- **Acceso rápido**: Botón flotante con contador de tokens
+- **Siempre visible**: No se oculta con scroll o cambios de vista
+- **Diseño distintivo**: Gradiente verde-teal para fácil identificación
+- **Compatibilidad total**: Mouse y touch optimizado
 
 ### 🔍 **Integración API D&D 5e**
 - **Base de datos completa**: Hechizos y clases oficiales
@@ -60,6 +92,14 @@ Una aplicación web moderna y completa para gestionar combates de Dungeons & Dra
 - **Gestión de sesiones**: Sistema robusto de salas con IDs únicos
 - **Reconexión automática**: Manejo inteligente de desconexiones
 - **Estado persistente**: Las sesiones se mantienen activas entre reconexiones
+
+### 📱 **Compatibilidad Móvil y Touch**
+- **Soporte touch completo**: Todos los controles optimizados para dispositivos táctiles
+- **Long press**: Edición de tokens con mantener presionado en móviles
+- **Prevención de doble activación**: Sistema inteligente para evitar clicks múltiples
+- **Controles flotantes**: Initiative List y Token Manager accesibles en touch
+- **Interfaz adaptativa**: Diseño responsivo para tablets y smartphones
+- **Gestos optimizados**: Navegación natural en dispositivos táctiles
 
 ## 🚀 Instalación y Configuración
 
@@ -144,11 +184,13 @@ npm run dev:full     # Cliente + Servidor simultáneamente
 
 - **Move**: Mover tokens y elementos
 - **Draw**: Dibujar líneas libres
-- **Erase**: Borrar dibujos
+- **Erase**: Goma selectiva inteligente (borra por tipo de elemento)
 - **Fill**: Rellenar áreas
 - **Square**: Dibujar rectángulos
 - **Walls**: Paredes horizontales/verticales
 - **Doors**: Puertas interactivas
+- **Text**: Colocar letreros y texto informativo
+- **Loot**: Cofres de tesoro con generador automático
 - **Fog**: Activar niebla de guerra
 
 ### Multijugador Online
@@ -184,13 +226,23 @@ src/
 ├── components/
 │   ├── ApiSection.tsx          # Integración API D&D 5e
 │   ├── DrawingTools.tsx        # Herramientas de dibujo
+│   ├── FloatingTokenManager.tsx # Token Manager flotante
 │   ├── GridComponent.tsx       # Componente principal de grilla
+│   ├── LootEditModal.tsx       # Modal de edición de loot
+│   ├── MultiplayerPanel.tsx    # Panel multijugador
+│   ├── TextEditModal.tsx       # Modal de edición de texto
 │   ├── TokenEditModal.tsx      # Modal de edición de tokens
 │   ├── TokenManagerPopup.tsx   # Popup flotante de gestión
 │   ├── TokenPanel.tsx          # Panel lateral de tokens
 │   ├── TokenTooltip.tsx        # Tooltips informativos
 │   ├── diceRoller.tsx          # Sistema de dados
-│   └── initiativeList.tsx      # Lista de iniciativa
+│   └── initiativeList.tsx      # Lista de iniciativa flotante
+├── hooks/
+│   └── useMultiplayerSync.ts   # Hook de sincronización
+├── services/
+│   ├── FirebaseService.ts      # Servicio Firebase
+│   ├── MultiplayerService.ts   # Servicio multijugador
+│   └── WebSocketService.ts     # Servicio WebSocket
 ├── App.tsx                     # Componente principal
 ├── main.tsx                    # Punto de entrada
 └── index.css                   # Estilos globales
@@ -241,6 +293,34 @@ src/
 - **Visuales**: Visibilidad, nameplate, health bar
 - **Estados**: 10 status effects diferentes
 - **Notas**: Notas privadas del GM
+
+#### Edición Móvil
+- **Long press**: Mantener presionado para editar en dispositivos táctiles
+- **Prompt nativo**: Interfaz simple para cambio rápido de nombres
+- **Touch optimizado**: Área de toque ampliada para mejor precisión
+
+### Sistema de Texto y Letreros
+
+#### Funcionalidades
+- **Colocación libre**: Click en cualquier casillero para agregar texto
+- **Editor completo**: Modal con opciones avanzadas de personalización
+- **Estilos configurables**: Tamaño (12-48px), colores personalizables
+- **Fondos opcionales**: Transparente, semi-transparente o sólido
+- **Sincronización**: Visible para todos los jugadores en multijugador
+
+### Sistema de Loot y Tesoros
+
+#### Generador Automático
+- **Raridades**: Common, Uncommon, Rare, Very Rare, Legendary
+- **Tipos variados**: Armas, armaduras, pociones, pergaminos, gemas
+- **Cantidades aleatorias**: 1-5 items por cofre
+- **Efectos visuales**: Brillo dorado para items raros
+
+#### Mecánicas de Juego
+- **Proximidad realista**: Solo visible con aliado adyacente
+- **Estados visuales**: Cofre intacto vs saqueado
+- **Edición manual**: Personaliza contenido completamente
+- **Sincronización**: Estado compartido en multijugador
 
 ### Sistema de Niebla de Guerra
 
@@ -406,15 +486,28 @@ REACT_APP_POLLING_INTERVAL=2000
 
 ## 🔮 Roadmap Futuro
 
-### Funcionalidades Planificadas
+### Funcionalidades Completadas ✅
 - [x] Modo multijugador en tiempo real
 - [x] Deployment en Netlify
+- [x] Sistema de texto y letreros
+- [x] Sistema de loot y tesoros
+- [x] Goma selectiva avanzada
+- [x] Controles flotantes (Initiative List, Token Manager)
+- [x] Soporte touch completo para móviles
+- [x] Animaciones de dados aceleradas
+- [x] Prevención de doble activación en touch
+- [x] Long press para edición en móviles
+
+### Funcionalidades Planificadas 🚀
 - [ ] Importación de mapas desde Roll20
 - [ ] Sistema de macros personalizables
 - [ ] Integración con D&D Beyond
 - [ ] Efectos de sonido ambientales
 - [ ] Sistema de chat integrado
 - [ ] Guardado en la nube con base de datos
+- [ ] Medición de distancias y áreas
+- [ ] Efectos de área (AoE) visuales
+- [ ] Sistema de condiciones automáticas
 
 ## 📄 Licencia
 

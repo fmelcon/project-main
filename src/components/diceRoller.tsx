@@ -602,8 +602,8 @@ const DiceScene: React.FC<{
 
     // Simulación física realista del dado
     const startTime = Date.now();
-    const animationDuration = 2500; // Duración más larga para realismo
-    const resultDisplayDuration = 1000;
+    const animationDuration = 1000; // Duración más rápida
+    const resultDisplayDuration = 400;
     
     // Parámetros físicos realistas
     const initialVelocity = {
@@ -696,7 +696,7 @@ const DiceScene: React.FC<{
         
         // Animación espectacular de resultado
         const resultAnimationStart = Date.now();
-        const resultAnimationDuration = 800; // Más rápida
+        const resultAnimationDuration = 300; // Mucho más rápida
         
         const animateResult = () => {
           const elapsed = Date.now() - resultAnimationStart;
@@ -729,7 +729,7 @@ const DiceScene: React.FC<{
               setShowResultAnimation(false);
               onAnimationEnd(result);
               onComplete();
-            }, 500);
+            }, 200);
           }
         };
         
@@ -776,7 +776,7 @@ const DiceScene: React.FC<{
             fontWeight: "bold",
             background: `linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4, #ffeaa7, #dda0dd)`,
             backgroundSize: "400% 400%",
-            animation: `rainbow ${2000}ms ease-in-out infinite`,
+            animation: `rainbow ${800}ms ease-in-out infinite`,
             WebkitBackgroundClip: "text",
             WebkitTextFillColor: "transparent",
             backgroundClip: "text",

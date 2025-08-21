@@ -121,19 +121,19 @@ const TokenPanel: React.FC<TokenPanelProps> = ({
 
       <div className="grid grid-cols-2 gap-3">
         <button
-          className="bg-blue-600 hover:bg-blue-700 p-2 rounded flex items-center justify-center gap-1"
+          className="bg-blue-600 hover:bg-blue-700 p-2 rounded flex items-center justify-center gap-1 hidden"
           onClick={() => addToken("ally", {})}
         >
           <Plus size={16} /> Add Ally
         </button>
         <button
-          className="bg-red-600 hover:bg-red-700 p-2 rounded flex items-center justify-center gap-1"
+          className="bg-red-600 hover:bg-red-700 p-2 rounded flex items-center justify-center gap-1 hidden"
           onClick={() => addToken("enemy", {})}
         >
           <Plus size={16} /> Add Enemy
         </button>
         <button
-          className="bg-yellow-600 hover:bg-yellow-700 p-2 rounded flex items-center justify-center gap-1 col-span-2"
+          className="bg-yellow-600 hover:bg-yellow-700 p-2 rounded flex items-center justify-center gap-1 col-span-2 hidden"
           onClick={() => addToken("boss", {})}
         >
           <Plus size={16} /> Add Large Boss
