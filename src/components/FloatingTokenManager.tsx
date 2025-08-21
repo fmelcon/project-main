@@ -10,7 +10,7 @@ const FloatingTokenManager: React.FC<FloatingTokenManagerProps> = ({ onOpen, tok
   const touchHandledRef = useRef(false);
   
   return (
-    <div className="fixed right-4 top-80 z-40">
+    <div className="hidden md:block fixed right-4 top-80 z-40">
       <button
         onClick={(e) => {
           if (!touchHandledRef.current) {

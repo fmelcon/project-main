@@ -918,6 +918,47 @@ function App() {
             </div>
           </div>
 
+          {/* Mobile Controls - Solo visible en móviles */}
+          <div className="md:hidden flex flex-col gap-2 mt-4">
+            {/* Token Creation Buttons */}
+            <div className="flex gap-2 justify-center flex-wrap">
+              <button
+                onClick={() => addToken('ally', {})}
+                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-3 py-2 rounded flex items-center gap-2 text-sm"
+              >
+                <Plus size={16} /> Ally
+              </button>
+              <button
+                onClick={() => addToken('enemy', {})}
+                className="bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white px-3 py-2 rounded flex items-center gap-2 text-sm"
+              >
+                <Plus size={16} /> Enemy
+              </button>
+              <button
+                onClick={() => addToken('boss', {})}
+                className="bg-gradient-to-r from-yellow-600 to-amber-600 hover:from-yellow-700 hover:to-amber-700 text-white px-3 py-2 rounded flex items-center gap-2 text-sm"
+              >
+                <Plus size={16} /> Boss
+              </button>
+            </div>
+            
+            {/* Initiative List and Token Manager */}
+            <div className="flex gap-2 justify-center flex-wrap">
+              <InitiativeList tokens={tokens} />
+              <button
+                onClick={() => setShowTokenManager(true)}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-3 py-2 rounded flex items-center gap-2 text-sm"
+              >
+                <Users size={16} /> Token Manager
+                {tokens.length > 0 && (
+                  <span className="bg-white/20 px-2 py-1 rounded-full text-xs font-bold">
+                    {tokens.length}
+                  </span>
+                )}
+              </button>
+            </div>
+          </div>
+
           <DrawingTools
             selectedTool={selectedTool}
             setSelectedTool={handleSelectedToolChange}
