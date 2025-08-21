@@ -797,9 +797,9 @@ function App() {
             style={{ background: "linear-gradient(145deg, #1a1a1a, #2d2d2d)" }}
           >
             <div className="flex justify-between items-start mb-4">
-              <div className="flex gap-2 flex-wrap">
+              <div className="flex gap-1 sm:gap-2 flex-wrap">
                 <button
-                  className={`px-3 py-1 rounded ${
+                  className={`px-2 sm:px-3 py-1 rounded text-xs sm:text-sm ${
                     gridType === "square" ? "bg-purple-600" : "bg-gray-700"
                   }`}
                   onClick={() => {
@@ -811,7 +811,7 @@ function App() {
                   Square Grid
                 </button>
                 <button
-                  className={`px-3 py-1 rounded ${
+                  className={`px-2 sm:px-3 py-1 rounded text-xs sm:text-sm ${
                     gridType === "octagonal" ? "bg-purple-600" : "bg-gray-700"
                   }`}
                   onClick={() => {
@@ -823,31 +823,32 @@ function App() {
                   Octagonal Grid
                 </button>
                 <button
-                  className="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded flex items-center gap-1 transition-all"
+                  className="bg-blue-600 hover:bg-blue-700 px-2 sm:px-3 py-1 rounded flex items-center gap-1 transition-all text-xs sm:text-sm"
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  <Upload size={16} /> Upload Map
+                  <Upload size={14} className="sm:w-4 sm:h-4" /> 
+                  <span className="hidden xs:inline">Upload </span>Map
                 </button>
-                <div className="flex items-center gap-1 bg-gray-700 rounded px-2 py-1">
+                <div className="flex items-center gap-1 bg-gray-700 rounded px-1 sm:px-2 py-1">
                   <button
-                    className="bg-orange-600 hover:bg-orange-700 px-2 py-1 rounded flex items-center transition-all"
+                    className="bg-orange-600 hover:bg-orange-700 px-1 sm:px-2 py-1 rounded flex items-center transition-all"
                     onClick={handleZoomOut}
                     title="Zoom Out"
                   >
-                    <Minus size={14} />
+                    <Minus size={12} className="sm:w-3.5 sm:h-3.5" />
                   </button>
-                  <span className="text-white text-sm font-medium min-w-[3rem] text-center">
+                  <span className="text-white text-xs sm:text-sm font-medium min-w-[2.5rem] sm:min-w-[3rem] text-center">
                     {Math.round(zoomLevel * 100)}%
                   </span>
                   <button
-                    className="bg-orange-600 hover:bg-orange-700 px-2 py-1 rounded flex items-center transition-all"
+                    className="bg-orange-600 hover:bg-orange-700 px-1 sm:px-2 py-1 rounded flex items-center transition-all"
                     onClick={handleZoomIn}
                     title="Zoom In"
                   >
-                    <Plus size={14} />
+                    <Plus size={12} className="sm:w-3.5 sm:h-3.5" />
                   </button>
                   <button
-                    className="bg-gray-600 hover:bg-gray-500 px-2 py-1 rounded text-xs transition-all"
+                    className="bg-gray-600 hover:bg-gray-500 px-1 sm:px-2 py-1 rounded text-xs transition-all"
                     onClick={resetZoom}
                     title="Reset Zoom"
                   >
@@ -855,11 +856,11 @@ function App() {
                   </button>
                 </div>
                 <button
-                  className="bg-green-600 hover:bg-green-700 px-3 py-1 rounded flex items-center gap-1 transition-all"
+                  className="bg-green-600 hover:bg-green-700 px-2 sm:px-3 py-1 rounded flex items-center gap-1 transition-all text-xs sm:text-sm"
                   onClick={toggleFullscreen}
                 >
-                  {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
-                  {isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+                  {isFullscreen ? <Minimize size={14} className="sm:w-4 sm:h-4" /> : <Maximize size={14} className="sm:w-4 sm:h-4" />}
+                  <span className="hidden xs:inline">{isFullscreen ? "Exit " : ""}</span>Fullscreen
                 </button>
               </div>
               <input
