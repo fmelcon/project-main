@@ -51,6 +51,8 @@ export interface FirebaseGameState {
   fogOfWar: string[];
   doors: { [doorKey: string]: any };
   walls: { [wallKey: string]: any };
+  texts: { [textId: string]: any };
+  loots: { [lootId: string]: any };
   gridType: string;
   backgroundImage?: string;
   selectedTool?: string;
@@ -60,7 +62,7 @@ export interface FirebaseGameState {
 }
 
 export interface FirebaseGameUpdate {
-  type: 'token_add' | 'token_update' | 'token_remove' | 'drawing_add' | 'drawing_clear' | 'fog_update' | 'door_update' | 'wall_update' | 'background_update' | 'grid_type_update' | 'dice_roll' | 'selected_tool_update' | 'selected_color_update' | 'token_sync_all' | 'drawing_sync_all' | 'doors_sync_all' | 'walls_sync_all';
+  type: 'token_add' | 'token_update' | 'token_remove' | 'drawing_add' | 'drawing_clear' | 'fog_update' | 'door_update' | 'wall_update' | 'background_update' | 'grid_type_update' | 'dice_roll' | 'selected_tool_update' | 'selected_color_update' | 'token_sync_all' | 'drawing_sync_all' | 'doors_sync_all' | 'walls_sync_all' | 'text_add' | 'text_update' | 'text_remove' | 'loot_add' | 'loot_update' | 'loot_remove' | 'texts_sync_all' | 'loots_sync_all' | 'game_state';
   data: any;
   playerId: string;
   timestamp: number;
@@ -207,6 +209,8 @@ class FirebaseService {
           fogOfWar: [],
           doors: {},
           walls: {},
+          texts: {},
+          loots: {},
           gridType: 'square',
           selectedTool: 'move',
           selectedColor: '#000000',
@@ -440,6 +444,30 @@ class FirebaseService {
       });
     }
     
+    // Sincronizar textos
+    if (gameState.texts !== undefined) {
+      const textsArray = Object.values(gameState.texts);
+      console.log('📝 Syncing texts:', textsArray.length);
+      this.onGameUpdateCallback?.({
+        type: 'texts_sync_all',
+        data: textsArray,
+        playerId: 'firebase-sync',
+        timestamp: Date.now()
+      });
+    }
+    
+    // Sincronizar loots
+    if (gameState.loots !== undefined) {
+      const lootsArray = Object.values(gameState.loots);
+      console.log('💰 Syncing loots:', lootsArray.length);
+      this.onGameUpdateCallback?.({
+        type: 'loots_sync_all',
+        data: lootsArray,
+        playerId: 'firebase-sync',
+        timestamp: Date.now()
+      });
+    }
+    
     // NO sincronizar herramientas seleccionadas - cada jugador mantiene su propia selección
     // Las herramientas son locales a cada jugador, solo se sincronizan las ACCIONES
   }
@@ -623,6 +651,54 @@ class FirebaseService {
           await set(clearDrawingRef, {});
           break;
           
+        // Casos para texto
+        case 'text_add':
+          const textRef = ref(this.database, `sessions/${this.currentSessionId}/gameState/texts/${update.data.id}`);
+          await set(textRef, update.data);
+          break;
+          
+        case 'text_update':
+          const updateTextRef = ref(this.database, `sessions/${this.currentSessionId}/gameState/texts/${update.data.id}`);
+          const currentTextSnapshot = await new Promise((resolve) => {
+            onValue(updateTextRef, (snapshot) => {
+              resolve(snapshot);
+            }, { onlyOnce: true });
+          }) as any;
+          
+          const currentText = currentTextSnapshot.exists() ? currentTextSnapshot.val() : {};
+          const updatedText = { ...currentText, ...update.data.updates };
+          await set(updateTextRef, updatedText);
+          break;
+          
+        case 'text_remove':
+          const removeTextRef = ref(this.database, `sessions/${this.currentSessionId}/gameState/texts/${update.data.id}`);
+          await remove(removeTextRef);
+          break;
+          
+        // Casos para loot
+        case 'loot_add':
+          const lootRef = ref(this.database, `sessions/${this.currentSessionId}/gameState/loots/${update.data.id}`);
+          await set(lootRef, update.data);
+          break;
+          
+        case 'loot_update':
+          const updateLootRef = ref(this.database, `sessions/${this.currentSessionId}/gameState/loots/${update.data.id}`);
+          const currentLootSnapshot = await new Promise((resolve) => {
+            onValue(updateLootRef, (snapshot) => {
+              resolve(snapshot);
+            }, { onlyOnce: true });
+          }) as any;
+          
+          const currentLoot = currentLootSnapshot.exists() ? currentLootSnapshot.val() : {};
+          const updatedLoot = { ...currentLoot, ...update.data.updates };
+          await set(updateLootRef, updatedLoot);
+          break;
+          
+        case 'loot_remove':
+          const removeLootRef = ref(this.database, `sessions/${this.currentSessionId}/gameState/loots/${update.data.id}`);
+          await remove(removeLootRef);
+          break;
+          
         // Agregar más casos según necesidad
     }
     
@@ -738,6 +814,37 @@ class FirebaseService {
   syncClearWalls(): void {
     console.log('🧱 FirebaseService.syncClearWalls called, Session:', this.currentSessionId);
     this.sendGameUpdate({ type: 'walls_clear', data: {} });
+  }
+
+  // Métodos de sincronización para textos
+  syncTextAdd(text: any): void {
+    this.sendGameUpdate({ type: 'text_add', data: text });
+  }
+
+  syncTextUpdate(textId: string, updates: any): void {
+    this.sendGameUpdate({ type: 'text_update', data: { id: textId, updates } });
+  }
+
+  syncTextRemove(textId: string): void {
+    this.sendGameUpdate({ type: 'text_remove', data: { id: textId } });
+  }
+
+  // Métodos de sincronización para loot
+  syncLootAdd(loot: any): void {
+    this.sendGameUpdate({ type: 'loot_add', data: loot });
+  }
+
+  syncLootUpdate(lootId: string, updates: any): void {
+    this.sendGameUpdate({ type: 'loot_update', data: { id: lootId, updates } });
+  }
+
+  syncLootRemove(lootId: string): void {
+    this.sendGameUpdate({ type: 'loot_remove', data: { id: lootId } });
+  }
+
+  // Método de sincronización del estado completo del juego
+  syncGameState(gameState: any): void {
+    this.sendGameUpdate({ type: 'game_state', data: gameState });
   }
 
   /**

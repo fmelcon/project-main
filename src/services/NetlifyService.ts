@@ -33,7 +33,7 @@ export interface NetlifyGameState {
 }
 
 export interface NetlifyGameUpdate {
-  type: 'token_add' | 'token_update' | 'token_remove' | 'drawing_add' | 'drawing_clear' | 'fog_update' | 'door_update' | 'wall_update' | 'background_update';
+  type: 'token_add' | 'token_update' | 'token_remove' | 'drawing_add' | 'drawing_clear' | 'fog_update' | 'door_update' | 'wall_update' | 'background_update' | 'text_add' | 'text_update' | 'text_remove' | 'loot_add' | 'loot_update' | 'loot_remove' | 'game_state';
   data: any;
   playerId: string;
   timestamp: string;
@@ -284,6 +284,37 @@ class NetlifyService {
 
   syncBackgroundUpdate(backgroundImage: string): void {
     this.sendGameUpdate({ type: 'background_update', data: { backgroundImage } });
+  }
+
+  // Métodos de sincronización para textos
+  syncTextAdd(text: any): void {
+    this.sendGameUpdate({ type: 'text_add', data: text });
+  }
+
+  syncTextUpdate(textId: string, updates: any): void {
+    this.sendGameUpdate({ type: 'text_update', data: { id: textId, updates } });
+  }
+
+  syncTextRemove(textId: string): void {
+    this.sendGameUpdate({ type: 'text_remove', data: { id: textId } });
+  }
+
+  // Métodos de sincronización para loot
+  syncLootAdd(loot: any): void {
+    this.sendGameUpdate({ type: 'loot_add', data: loot });
+  }
+
+  syncLootUpdate(lootId: string, updates: any): void {
+    this.sendGameUpdate({ type: 'loot_update', data: { id: lootId, updates } });
+  }
+
+  syncLootRemove(lootId: string): void {
+    this.sendGameUpdate({ type: 'loot_remove', data: { id: lootId } });
+  }
+
+  // Método de sincronización del estado completo del juego
+  syncGameState(gameState: any): void {
+    this.sendGameUpdate({ type: 'game_state', data: gameState });
   }
 
   /**

@@ -218,6 +218,44 @@ class MultiplayerService {
     this.service.syncClearWalls();
   }
 
+  // Métodos de sincronización para textos
+  syncTextAdd(text: any): void {
+    console.log('📝 MultiplayerService: Adding text:', text);
+    this.service.syncTextAdd(text);
+  }
+
+  syncTextUpdate(textId: string, updates: any): void {
+    console.log('📝 MultiplayerService: Updating text:', textId, updates);
+    this.service.syncTextUpdate(textId, updates);
+  }
+
+  syncTextRemove(textId: string): void {
+    console.log('📝 MultiplayerService: Removing text:', textId);
+    this.service.syncTextRemove(textId);
+  }
+
+  // Métodos de sincronización para loot
+  syncLootAdd(loot: any): void {
+    console.log('💰 MultiplayerService: Adding loot:', loot);
+    this.service.syncLootAdd(loot);
+  }
+
+  syncLootUpdate(lootId: string, updates: any): void {
+    console.log('💰 MultiplayerService: Updating loot:', lootId, updates);
+    this.service.syncLootUpdate(lootId, updates);
+  }
+
+  syncLootRemove(lootId: string): void {
+    console.log('💰 MultiplayerService: Removing loot:', lootId);
+    this.service.syncLootRemove(lootId);
+  }
+
+  // Método de sincronización del estado completo del juego
+  syncGameState(gameState: any): void {
+    console.log('🎮 MultiplayerService: Syncing game state:', gameState);
+    this.service.syncGameState(gameState);
+  }
+
   /**
    * Getters
    */

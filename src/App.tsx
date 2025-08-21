@@ -523,12 +523,16 @@ function App() {
   const handleLootSave = (lootData: LootData) => {
     if (editingLoot) {
       setLoots(loots.map(l => l.id === lootData.id ? lootData : l));
+      // Sincronizar actualización de loot
+      multiplayerSync.syncUpdateLoot(lootData.id, lootData);
     } else {
       if (pendingLootPosition) {
         lootData.x = pendingLootPosition.x;
         lootData.y = pendingLootPosition.y;
       }
       setLoots([...loots, lootData]);
+      // Sincronizar adición de loot
+      multiplayerSync.syncAddLoot(lootData);
     }
     setEditingLoot(undefined);
     setPendingLootPosition(null);
@@ -541,6 +545,8 @@ function App() {
   
   const handleLootDelete = (id: string) => {
     setLoots(loots.filter(l => l.id !== id));
+    // Sincronizar eliminación de loot
+    multiplayerSync.syncRemoveLoot(id);
   };
   
   // Funciones de limpieza

@@ -1212,7 +1212,7 @@ const GridComponent: React.FC<GridComponentProps> = ({
         borderRadius: '8px',
         zIndex: 12,
         cursor: selectedTool === 'loot' ? 'pointer' : 'default',
-        pointerEvents: selectedTool === 'loot' ? 'auto' : 'none',
+        pointerEvents: 'auto',
         boxShadow: '0 4px 8px rgba(0,0,0,0.4)',
         transition: 'all 0.2s ease',
       };

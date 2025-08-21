@@ -212,6 +212,20 @@ export const useMultiplayerSync = ({
           }
           break;
           
+        case 'texts_sync_all':
+          // Sincronización completa de textos desde Firebase
+          if (update.data && Array.isArray(update.data)) {
+            setTexts(update.data);
+          }
+          break;
+          
+        case 'loots_sync_all':
+          // Sincronización completa de loots desde Firebase
+          if (update.data && Array.isArray(update.data)) {
+            setLoots(update.data);
+          }
+          break;
+          
         case 'token_add_old':
           setTokens(prev => {
             const exists = prev.find(t => t.id === update.data.id);
@@ -289,6 +303,64 @@ export const useMultiplayerSync = ({
           
         case 'walls_clear':
           setWalls(new Map());
+          break;
+          
+        // Manejo de actualizaciones de texto
+        case 'text_add':
+          setTexts(prev => {
+            const exists = prev.find(t => t.id === update.data.id);
+            if (exists) return prev;
+            return [...prev, update.data];
+          });
+          break;
+          
+        case 'text_update':
+          setTexts(prev => prev.map(text => 
+            text.id === update.data.id 
+              ? { ...text, ...update.data.updates }
+              : text
+          ));
+          break;
+          
+        case 'text_remove':
+          setTexts(prev => prev.filter(text => text.id !== update.data.id));
+          break;
+          
+        // Manejo de actualizaciones de loot
+        case 'loot_add':
+          setLoots(prev => {
+            const exists = prev.find(l => l.id === update.data.id);
+            if (exists) return prev;
+            return [...prev, update.data];
+          });
+          break;
+          
+        case 'loot_update':
+          setLoots(prev => prev.map(loot => 
+            loot.id === update.data.id 
+              ? { ...loot, ...update.data.updates }
+              : loot
+          ));
+          break;
+          
+        case 'loot_remove':
+          setLoots(prev => prev.filter(loot => loot.id !== update.data.id));
+          break;
+          
+        // Manejo de sincronización completa del estado del juego
+        case 'game_state':
+          if (update.data) {
+            if (update.data.tokens) setTokens(update.data.tokens);
+            if (update.data.drawingData) setDrawingData(update.data.drawingData);
+            if (update.data.fogOfWar) setFogOfWar(new Set(update.data.fogOfWar));
+            if (update.data.doors) setDoors(new Map(update.data.doors));
+            if (update.data.walls) setWalls(new Map(update.data.walls));
+            if (update.data.texts) setTexts(update.data.texts);
+            if (update.data.loots) setLoots(update.data.loots);
+            if (update.data.backgroundImage !== undefined) setBackgroundImage(update.data.backgroundImage);
+            if (update.data.gridType) setGridType(update.data.gridType);
+            if (update.data.fogEnabled !== undefined) setFogEnabled(update.data.fogEnabled);
+          }
           break;
           
         default:
@@ -432,6 +504,58 @@ export const useMultiplayerSync = ({
     console.log('🧱 Syncing clear walls');
     multiplayerService.syncClearWalls();
   }, [isInSession, canModify]);
+
+  // Métodos de sincronización para textos
+  const syncAddText = useCallback((text: any) => {
+    if (!isInSession || isApplyingRemoteUpdate.current) return;
+    
+    console.log('📝 Syncing add text:', text);
+    multiplayerService.syncTextAdd(text);
+  }, [isInSession]);
+
+  const syncUpdateText = useCallback((textId: string, updates: any) => {
+    if (!isInSession || isApplyingRemoteUpdate.current) return;
+    
+    console.log('📝 Syncing update text:', textId, updates);
+    multiplayerService.syncTextUpdate(textId, updates);
+  }, [isInSession]);
+
+  const syncRemoveText = useCallback((textId: string) => {
+    if (!isInSession || isApplyingRemoteUpdate.current) return;
+    
+    console.log('📝 Syncing remove text:', textId);
+    multiplayerService.syncTextRemove(textId);
+  }, [isInSession]);
+
+  // Métodos de sincronización para loot
+  const syncAddLoot = useCallback((loot: any) => {
+    if (!isInSession || isApplyingRemoteUpdate.current) return;
+    
+    console.log('💰 Syncing add loot:', loot);
+    multiplayerService.syncLootAdd(loot);
+  }, [isInSession]);
+
+  const syncUpdateLoot = useCallback((lootId: string, updates: any) => {
+    if (!isInSession || isApplyingRemoteUpdate.current) return;
+    
+    console.log('💰 Syncing update loot:', lootId, updates);
+    multiplayerService.syncLootUpdate(lootId, updates);
+  }, [isInSession]);
+
+  const syncRemoveLoot = useCallback((lootId: string) => {
+    if (!isInSession || isApplyingRemoteUpdate.current) return;
+    
+    console.log('💰 Syncing remove loot:', lootId);
+    multiplayerService.syncLootRemove(lootId);
+  }, [isInSession]);
+
+  // Método de sincronización del estado completo del juego
+  const syncGameState = useCallback((gameState: any) => {
+    if (!isInSession || isApplyingRemoteUpdate.current) return;
+    
+    console.log('🎮 Syncing game state:', gameState);
+    multiplayerService.syncGameState(gameState);
+  }, [isInSession]);
   
   // Cleanup de timers al desmontar
   useEffect(() => {
@@ -453,6 +577,13 @@ export const useMultiplayerSync = ({
     syncUpdateWall,
     syncClearDoors,
     syncClearWalls,
+    syncAddText,
+    syncUpdateText,
+    syncRemoveText,
+    syncAddLoot,
+    syncUpdateLoot,
+    syncRemoveLoot,
+    syncGameState,
     syncUpdateBackground,
     syncUpdateGridType,
     syncDiceRoll,
