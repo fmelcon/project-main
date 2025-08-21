@@ -4,6 +4,7 @@ import FloatingTokenManager from "./FloatingTokenManager";
 import FloatingTokenButtons from "./FloatingTokenButtons";
 import { TextData } from "./TextEditModal";
 import { LootData } from "./LootEditModal";
+import { LootRarity } from "../services/DnDApiService";
 
 interface GridComponentProps {
   gridType: "square" | "octagonal";
@@ -56,6 +57,18 @@ interface GridComponentProps {
   onAddAlly: () => void;
   onAddEnemy: () => void;
   onAddBoss: () => void;
+  roomAnnotations?: Array<{
+    id: string;
+    roomNumber: number;
+    x: number;
+    y: number;
+    content: string;
+    lineToX: number;
+    lineToY: number;
+    rarity?: LootRarity;
+    isVisible?: boolean;
+  }>;
+  onToggleAnnotation?: (annotationId: string) => void;
 }
 
 const getContrastColor = (hexcolor: string): string => {
@@ -107,6 +120,8 @@ const GridComponent: React.FC<GridComponentProps> = ({
   onAddAlly,
   onAddEnemy,
   onAddBoss,
+  roomAnnotations = [],
+  onToggleAnnotation,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
@@ -1194,6 +1209,97 @@ const GridComponent: React.FC<GridComponentProps> = ({
     });
   };
 
+  // Render room annotations (One Page Dungeon style)
+  const renderRoomAnnotations = () => {
+    return roomAnnotations.map((annotation) => {
+      // Solo mostrar anotaciones visibles (por defecto true si no está definido)
+      const isVisible = annotation.isVisible !== false;
+      
+      // Colores por rareza
+      const rarityColors = {
+        common: '#8B4513',
+        uncommon: '#228B22',
+        rare: '#4169E1',
+        'very-rare': '#8A2BE2',
+        legendary: '#FFD700'
+      };
+      
+      const borderColor = annotation.rarity ? rarityColors[annotation.rarity] : '#666666';
+      
+      const annotationStyle: React.CSSProperties = {
+        position: 'absolute',
+        left: `${annotation.x * CELL_SIZE}px`,
+        top: `${annotation.y * CELL_SIZE}px`,
+        minWidth: '120px',
+        maxWidth: '200px',
+        padding: '8px 12px',
+        backgroundColor: '#000000',
+        color: '#FFFFFF',
+        border: `2px solid ${borderColor}`,
+        borderRadius: '4px',
+        fontSize: '11px',
+        fontFamily: 'monospace',
+        lineHeight: '1.3',
+        zIndex: 20,
+        boxShadow: '0 4px 8px rgba(0,0,0,0.6)',
+        whiteSpace: 'pre-line',
+        pointerEvents: 'auto',
+        cursor: 'pointer',
+        userSelect: 'none',
+        opacity: isVisible ? 1 : 0.3,
+        transition: 'opacity 0.2s ease'
+      };
+      
+      // Línea conectora
+      const lineStyle: React.CSSProperties = {
+        position: 'absolute',
+        left: `${Math.min(annotation.x, annotation.lineToX) * CELL_SIZE}px`,
+        top: `${Math.min(annotation.y, annotation.lineToY) * CELL_SIZE}px`,
+        width: `${Math.abs(annotation.x - annotation.lineToX) * CELL_SIZE}px`,
+        height: `${Math.abs(annotation.y - annotation.lineToY) * CELL_SIZE}px`,
+        zIndex: 19,
+        pointerEvents: 'none',
+        opacity: isVisible ? 1 : 0.3,
+        transition: 'opacity 0.2s ease'
+      };
+      
+      const handleAnnotationClick = (e: React.MouseEvent | React.TouchEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (onToggleAnnotation) {
+          onToggleAnnotation(annotation.id);
+        }
+      };
+      
+      return (
+        <React.Fragment key={annotation.id}>
+          {/* Línea conectora */}
+          <svg style={lineStyle}>
+            <line
+              x1={annotation.x > annotation.lineToX ? '100%' : '0%'}
+              y1={annotation.y > annotation.lineToY ? '100%' : '0%'}
+              x2={annotation.x > annotation.lineToX ? '0%' : '100%'}
+              y2={annotation.y > annotation.lineToY ? '0%' : '100%'}
+              stroke={borderColor}
+              strokeWidth="2"
+              strokeDasharray="4,2"
+            />
+          </svg>
+          
+          {/* Recuadro de anotación */}
+          <div 
+            style={annotationStyle}
+            onClick={handleAnnotationClick}
+            onTouchEnd={handleAnnotationClick}
+            title={isVisible ? 'Clic para ocultar' : 'Clic para mostrar'}
+          >
+            {isVisible ? annotation.content : '...'}
+          </div>
+        </React.Fragment>
+      );
+    });
+  };
+
   // Render loot chests
   const renderLoots = () => {
     return loots.map((loot) => {
@@ -1404,6 +1510,18 @@ const GridComponent: React.FC<GridComponentProps> = ({
         }}
       >
         {renderTexts()}
+      </div>
+
+      {/* Room Annotations (One Page Dungeon style) */}
+      <div
+        style={{
+          width: "100%",
+          height: "100%",
+          position: "absolute",
+          zIndex: 20,
+        }}
+      >
+        {renderRoomAnnotations()}
       </div>
 
       {/* Tooltip */}
