@@ -1,19 +1,16 @@
 import React from "react";
-import { Pencil, PaintBucket, Square, Move, Trash2, Eye, EyeOff, DoorOpen, Minus, RotateCcw } from "lucide-react";
+import { Pencil, PaintBucket, Square, Move, Trash2, Eye, EyeOff, DoorOpen, Minus, RotateCcw, Type, Coins, Eraser } from "lucide-react";
 
 interface DrawingToolsProps {
-  selectedTool: "move" | "draw" | "fill" | "square" | "fog" | "door-h" | "door-v" | "wall-h" | "wall-v";
+  selectedTool: "move" | "draw" | "erase" | "fill" | "square" | "fog" | "door-h" | "door-v" | "wall-h" | "wall-v" | "text" | "loot";
   setSelectedTool: React.Dispatch<
-    React.SetStateAction<"move" | "draw" | "fill" | "square" | "fog" | "door-h" | "door-v" | "wall-h" | "wall-v">
+    React.SetStateAction<"move" | "draw" | "erase" | "fill" | "square" | "fog" | "door-h" | "door-v" | "wall-h" | "wall-v" | "text" | "loot">
   >;
   selectedColor: string;
   setSelectedColor: React.Dispatch<React.SetStateAction<string>>;
-  clearDrawing: () => void;
   fogEnabled: boolean;
   toggleFogOfWar: () => void;
-  clearFogOfWar: () => void;
-  clearDoors: () => void;
-  clearWalls: () => void;
+  clearAll: () => void;
 }
 
 const DrawingTools: React.FC<DrawingToolsProps> = ({
@@ -21,12 +18,9 @@ const DrawingTools: React.FC<DrawingToolsProps> = ({
   setSelectedTool,
   selectedColor,
   setSelectedColor,
-  clearDrawing,
   fogEnabled,
   toggleFogOfWar,
-  clearFogOfWar,
-  clearDoors,
-  clearWalls,
+  clearAll,
 }) => {
   const colors = [
     "#e74c3c", // Red
@@ -64,6 +58,13 @@ const DrawingTools: React.FC<DrawingToolsProps> = ({
           title="Draw Lines"
         >
           <Pencil size={20} />
+        </button>
+        <button
+          className={`tool-button ${selectedTool === "erase" ? "active" : ""}`}
+          onClick={() => setSelectedTool("erase")}
+          title="Eraser - Click to erase content from grid cells"
+        >
+          <Eraser size={20} />
         </button>
         <button
           className={`tool-button ${selectedTool === "fill" ? "active" : ""}`}
@@ -115,9 +116,23 @@ const DrawingTools: React.FC<DrawingToolsProps> = ({
           <RotateCcw size={20} style={{ transform: 'rotate(90deg)' }} />
         </button>
         <button
-          className="tool-button"
-          onClick={clearDrawing}
-          title="Clear Drawing"
+          className={`tool-button ${selectedTool === "text" ? "active" : ""}`}
+          onClick={() => setSelectedTool("text")}
+          title="Add Text/Signs"
+        >
+          <Type size={20} />
+        </button>
+        <button
+          className={`tool-button ${selectedTool === "loot" ? "active" : ""}`}
+          onClick={() => setSelectedTool("loot")}
+          title="Add Loot Chest"
+        >
+          <Coins size={20} />
+        </button>
+        <button
+          className="tool-button bg-red-600 hover:bg-red-700 border-red-500"
+          onClick={clearAll}
+          title="Clear Everything (Drawings, Texts, Loot, Doors, Walls, Fog)"
         >
           <Trash2 size={20} />
         </button>
@@ -153,57 +168,11 @@ const DrawingTools: React.FC<DrawingToolsProps> = ({
             {fogEnabled ? <EyeOff size={16} /> : <Eye size={16} />}
             {fogEnabled ? "Disable Fog" : "Enable Fog"}
           </button>
-          <button
-            className="tool-button flex items-center justify-center gap-2"
-            onClick={clearFogOfWar}
-            title="Clear All Fog"
-          >
-            <Trash2 size={16} />
-            Clear Fog
-          </button>
         </div>
-       </div>
-
-       <div className="mt-4">
-         <h3 className="font-semibold mb-2">Doors</h3>
-         <div className="flex flex-col gap-2">
-           <button
-             className="tool-button flex items-center justify-center gap-2"
-             onClick={clearDoors}
-             title="Clear All Doors"
-           >
-             <Trash2 size={16} />
-             Clear Doors
-           </button>
-         </div>
-         <p className="text-xs text-gray-400 mt-2">
-            Click to place doors on cell edges. Click existing doors to toggle open/closed. Green=Open, Brown=Closed.
-          </p>
-        </div>
-
-        <div className="mt-4">
-          <h3 className="font-semibold mb-2">Fog of War</h3>
-          <p className="text-xs text-gray-400 mb-2">
-            When enabled, covers entire grid. Only ally tokens reveal 2-cell radius when moved.
-          </p>
-        </div>
-
-        <div className="mt-4">
-          <h3 className="font-semibold mb-2">Walls</h3>
-          <div className="flex flex-col gap-2">
-            <button
-              className="tool-button flex items-center justify-center gap-2"
-              onClick={clearWalls}
-              title="Clear All Walls"
-            >
-              <Trash2 size={16} />
-              Clear Walls
-            </button>
-          </div>
-          <p className="text-xs text-gray-400 mt-2">
-            Click to place walls on cell edges. Click existing walls to remove.
-          </p>
-        </div>
+        <p className="text-xs text-gray-400 mt-2">
+          When enabled, covers entire grid. Only ally tokens reveal 2-cell radius when moved.
+        </p>
+      </div>
       </div>
     );
 };

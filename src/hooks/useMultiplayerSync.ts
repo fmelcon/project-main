@@ -14,9 +14,11 @@ interface UseMultiplayerSyncProps {
   fogOfWar: Set<string>;
   doors: Map<string, any>;
   walls: Map<string, any>;
+  texts: any[];
+  loots: any[];
   backgroundImage?: string;
   gridType: "square" | "octagonal";
-  selectedTool: "move" | "draw" | "erase" | "fill" | "square" | "fog" | "door-h" | "door-v" | "wall-h" | "wall-v";
+  selectedTool: "move" | "draw" | "erase" | "fill" | "square" | "fog" | "door-h" | "door-v" | "wall-h" | "wall-v" | "text" | "loot";
   selectedColor: string;
   fogEnabled: boolean;
   
@@ -26,9 +28,11 @@ interface UseMultiplayerSyncProps {
   setFogOfWar: (fog: Set<string> | ((prev: Set<string>) => Set<string>)) => void;
   setDoors: (doors: Map<string, any> | ((prev: Map<string, any>) => Map<string, any>)) => void;
   setWalls: (walls: Map<string, any> | ((prev: Map<string, any>) => Map<string, any>)) => void;
+  setTexts: (texts: any[] | ((prev: any[]) => any[])) => void;
+  setLoots: (loots: any[] | ((prev: any[]) => any[])) => void;
   setBackgroundImage: (image: string | undefined) => void;
   setGridType: (gridType: "square" | "octagonal") => void;
-  setSelectedTool: (tool: "move" | "draw" | "erase" | "fill" | "square" | "fog" | "door-h" | "door-v" | "wall-h" | "wall-v") => void;
+  setSelectedTool: (tool: "move" | "draw" | "erase" | "fill" | "square" | "fog" | "door-h" | "door-v" | "wall-h" | "wall-v" | "text" | "loot") => void;
   setSelectedColor: (color: string) => void;
   setFogEnabled: (enabled: boolean) => void;
   
@@ -56,6 +60,15 @@ interface SyncMethods {
   syncClearDoors: () => void;
   syncClearWalls: () => void;
   
+  // Métodos de sincronización para textos y botín
+  syncAddText: (text: any) => void;
+  syncUpdateText: (textId: string, updates: any) => void;
+  syncRemoveText: (textId: string) => void;
+  syncAddLoot: (loot: any) => void;
+  syncUpdateLoot: (lootId: string, updates: any) => void;
+  syncRemoveLoot: (lootId: string) => void;
+  syncGameState: (gameState: any) => void;
+  
   // Método de sincronización para fondo
   syncUpdateBackground: (backgroundImage: string) => void;
   
@@ -66,7 +79,7 @@ interface SyncMethods {
   syncDiceRoll: (diceData: { sides: number; result: number; player: string; timestamp: number }) => void;
   
   // Métodos de sincronización para herramientas de dibujo
-  syncUpdateSelectedTool: (tool: "move" | "draw" | "erase" | "fill" | "square" | "fog" | "door-h" | "door-v" | "wall-h" | "wall-v") => void;
+  syncUpdateSelectedTool: (tool: "move" | "draw" | "erase" | "fill" | "square" | "fog" | "door-h" | "door-v" | "wall-h" | "wall-v" | "text" | "loot") => void;
   syncUpdateSelectedColor: (color: string) => void;
   
   // Método de sincronización para fog enabled
@@ -85,6 +98,8 @@ export const useMultiplayerSync = ({
   fogOfWar,
   doors,
   walls,
+  texts,
+  loots,
   backgroundImage,
   gridType,
   selectedTool,
@@ -95,6 +110,8 @@ export const useMultiplayerSync = ({
   setFogOfWar,
   setDoors,
   setWalls,
+  setTexts,
+  setLoots,
   setBackgroundImage,
   setGridType,
   setSelectedTool,

@@ -1,5 +1,7 @@
 import React, { useRef, useEffect, useState } from "react";
-import TokenTooltip from "./TokenTooltip"; // Asegúrate de importar el componente TokenTooltip
+import TokenTooltip from "./TokenTooltip";
+import { TextData } from "./TextEditModal";
+import { LootData } from "./LootEditModal";
 
 interface GridComponentProps {
   gridType: "square" | "octagonal";
@@ -17,7 +19,7 @@ interface GridComponentProps {
     color: string;
   }>;
   drawingData: Array<{ type: string; points: number[]; color: string }>;
-  selectedTool: "move" | "draw" | "erase" | "fill" | "square" | "fog" | "door-h" | "door-v" | "wall-h" | "wall-v";
+  selectedTool: "move" | "draw" | "erase" | "fill" | "square" | "fog" | "door-h" | "door-v" | "wall-h" | "wall-v" | "text" | "loot";
   selectedColor: string;
   onDrawing: (drawingData: {
     type: string;
@@ -38,6 +40,15 @@ interface GridComponentProps {
   onDoorToggle: (x: number, y: number, type: 'horizontal' | 'vertical') => void;
   walls: Map<string, { type: 'horizontal' | 'vertical' }>;
   onWallToggle: (x: number, y: number, type: 'horizontal' | 'vertical') => void;
+  texts: TextData[];
+  onTextEdit: (textData: TextData) => void;
+  onTextDelete: (id: string) => void;
+  onTextPlace: (x: number, y: number) => void;
+  loots: LootData[];
+  onLootEdit: (lootData: LootData) => void;
+  onLootDelete: (id: string) => void;
+  onLootPlace: (x: number, y: number) => void;
+  onEraseCell: (gridX: number, gridY: number) => void;
 }
 
 const getContrastColor = (hexcolor: string): string => {
@@ -75,6 +86,15 @@ const GridComponent: React.FC<GridComponentProps> = ({
   onDoorToggle,
   walls,
   onWallToggle,
+  texts,
+  onTextEdit,
+  onTextDelete,
+  onTextPlace,
+  loots,
+  onLootEdit,
+  onLootDelete,
+  onLootPlace,
+  onEraseCell,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
@@ -481,6 +501,41 @@ const GridComponent: React.FC<GridComponentProps> = ({
       
       const doorType = selectedTool === "door-h" ? "horizontal" : "vertical";
       onDoorToggle(boundedX, boundedY, doorType);
+    } else if (selectedTool === "text") {
+      // Handle text placement
+      const gridX = Math.floor(x / CELL_SIZE);
+      const gridY = Math.floor(y / CELL_SIZE);
+      
+      // Check if clicking on existing text
+      const clickedText = texts.find(text => 
+        Math.floor(text.x) === gridX && Math.floor(text.y) === gridY
+      );
+      
+      if (clickedText) {
+        onTextEdit(clickedText);
+      } else {
+        onTextPlace(gridX, gridY);
+      }
+    } else if (selectedTool === "loot") {
+      // Handle loot placement
+      const gridX = Math.floor(x / CELL_SIZE);
+      const gridY = Math.floor(y / CELL_SIZE);
+      
+      // Check if clicking on existing loot
+      const clickedLoot = loots.find(loot => 
+        Math.floor(loot.x) === gridX && Math.floor(loot.y) === gridY
+      );
+      
+      if (clickedLoot) {
+        onLootEdit(clickedLoot);
+      } else {
+        onLootPlace(gridX, gridY);
+      }
+    } else if (selectedTool === "erase") {
+      // Handle selective erasing
+      const gridX = Math.floor(x / CELL_SIZE);
+      const gridY = Math.floor(y / CELL_SIZE);
+      onEraseCell(gridX, gridY);
     } else {
       setIsDrawing(true);
 
@@ -949,6 +1004,129 @@ const GridComponent: React.FC<GridComponentProps> = ({
     });
   };
 
+  // Render texts
+  const renderTexts = () => {
+    return texts.map((text) => {
+      const textStyle: React.CSSProperties = {
+        position: 'absolute',
+        left: `${text.x * CELL_SIZE}px`,
+        top: `${text.y * CELL_SIZE}px`,
+        minWidth: `${CELL_SIZE}px`,
+        minHeight: `${CELL_SIZE}px`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: text.textAlign,
+        color: text.color,
+        fontSize: `${text.fontSize}px`,
+        fontWeight: text.fontWeight,
+        textAlign: text.textAlign,
+        backgroundColor: text.backgroundColor,
+        border: text.borderColor ? `2px solid ${text.borderColor}` : 'none',
+        borderRadius: '4px',
+        padding: '4px 8px',
+        zIndex: 15,
+        cursor: selectedTool === 'text' ? 'pointer' : 'default',
+        pointerEvents: selectedTool === 'text' ? 'auto' : 'none',
+        wordBreak: 'break-word',
+        maxWidth: `${CELL_SIZE * 3}px`,
+        boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+      };
+
+      return (
+        <div
+          key={text.id}
+          style={textStyle}
+          onClick={() => selectedTool === 'text' && onTextEdit(text)}
+          onContextMenu={(e) => {
+            if (selectedTool === 'text') {
+              e.preventDefault();
+              onTextDelete(text.id);
+            }
+          }}
+          title={selectedTool === 'text' ? 'Click to edit, right-click to delete' : text.text}
+        >
+          {text.text}
+        </div>
+      );
+    });
+  };
+
+  // Render loot chests
+  const renderLoots = () => {
+    return loots.map((loot) => {
+      const lootStyle: React.CSSProperties = {
+        position: 'absolute',
+        left: `${loot.x * CELL_SIZE}px`,
+        top: `${loot.y * CELL_SIZE}px`,
+        width: `${CELL_SIZE}px`,
+        height: `${CELL_SIZE}px`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: `${CELL_SIZE * 0.6}px`,
+        backgroundColor: loot.isLooted ? 'rgba(139, 69, 19, 0.8)' : 'rgba(255, 215, 0, 0.9)',
+        border: '3px solid #8B4513',
+        borderRadius: '8px',
+        zIndex: 12,
+        cursor: selectedTool === 'loot' ? 'pointer' : 'default',
+        pointerEvents: selectedTool === 'loot' ? 'auto' : 'none',
+        boxShadow: '0 4px 8px rgba(0,0,0,0.4)',
+        transition: 'all 0.2s ease',
+      };
+
+      const itemCount = loot.items.length;
+      const hasRareItems = loot.items.some(item => 
+        ['rare', 'very-rare', 'legendary', 'artifact'].includes(item.rarity)
+      );
+
+      return (
+        <div
+          key={loot.id}
+          style={{
+            ...lootStyle,
+            filter: hasRareItems ? 'drop-shadow(0 0 8px gold)' : 'none',
+          }}
+          onClick={() => selectedTool === 'loot' && onLootEdit(loot)}
+          onContextMenu={(e) => {
+            if (selectedTool === 'loot') {
+              e.preventDefault();
+              onLootDelete(loot.id);
+            }
+          }}
+          title={selectedTool === 'loot' ? 
+            `${loot.isLooted ? 'Empty' : `${itemCount} items`} - Click to edit, right-click to delete` : 
+            `Loot chest (${loot.isLooted ? 'Empty' : `${itemCount} items`})`
+          }
+        >
+          {loot.isLooted ? '📦' : '💰'}
+          {!loot.isLooted && itemCount > 0 && (
+            <div
+              style={{
+                position: 'absolute',
+                top: '-8px',
+                right: '-8px',
+                backgroundColor: hasRareItems ? '#FFD700' : '#FF6B6B',
+                color: 'white',
+                borderRadius: '50%',
+                width: '20px',
+                height: '20px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '12px',
+                fontWeight: 'bold',
+                border: '2px solid white',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+              }}
+            >
+              {itemCount}
+            </div>
+          )}
+        </div>
+      );
+    });
+  };
+
   return (
     <div
       ref={gridRef}
@@ -1046,6 +1224,30 @@ const GridComponent: React.FC<GridComponentProps> = ({
         }}
       >
         {renderTokens()}
+      </div>
+
+      {/* Loot layer */}
+      <div
+        style={{
+          width: "100%",
+          height: "100%",
+          position: "absolute",
+          zIndex: 12,
+        }}
+      >
+        {renderLoots()}
+      </div>
+
+      {/* Text layer */}
+      <div
+        style={{
+          width: "100%",
+          height: "100%",
+          position: "absolute",
+          zIndex: 15,
+        }}
+      >
+        {renderTexts()}
       </div>
 
       {/* Tooltip */}

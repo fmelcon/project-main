@@ -27,6 +27,8 @@ import InitiativeList from "./components/InitiativeList";
 import DiceRoller from "./components/DiceRoller";
 import MultiplayerPanel from "./components/MultiplayerPanel";
 import TokenManagerPopup from "./components/TokenManagerPopup";
+import TextEditModal, { TextData } from "./components/TextEditModal";
+import LootEditModal, { LootData } from "./components/LootEditModal";
 import { useMultiplayerSync } from "./hooks/useMultiplayerSync";
 import { GameUpdate } from "./services/WebSocketService";
 import "./App.css";
@@ -54,7 +56,7 @@ function App() {
     }>
   >([]);
   const [selectedTool, setSelectedTool] = useState<
-    "move" | "draw" | "erase" | "fill" | "square" | "fog" | "door-h" | "door-v" | "wall-h" | "wall-v"
+    "move" | "draw" | "erase" | "fill" | "square" | "fog" | "door-h" | "door-v" | "wall-h" | "wall-v" | "text" | "loot"
   >("move");
   const [selectedColor, setSelectedColor] = useState<string>("#ff0000");
   const [drawingData, setDrawingData] = useState<
@@ -78,6 +80,16 @@ function App() {
   
   // Estado para Token Manager Popup
   const [showTokenManager, setShowTokenManager] = useState(false);
+  
+  // Estados para textos y botín
+  const [texts, setTexts] = useState<TextData[]>([]);
+  const [loots, setLoots] = useState<LootData[]>([]);
+  const [showTextModal, setShowTextModal] = useState(false);
+  const [showLootModal, setShowLootModal] = useState(false);
+  const [editingText, setEditingText] = useState<TextData | undefined>(undefined);
+  const [editingLoot, setEditingLoot] = useState<LootData | undefined>(undefined);
+  const [pendingTextPosition, setPendingTextPosition] = useState<{x: number, y: number} | null>(null);
+  const [pendingLootPosition, setPendingLootPosition] = useState<{x: number, y: number} | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -157,6 +169,8 @@ function App() {
     permanentlyRevealed,
     doors,
     walls,
+    texts,
+    loots,
     backgroundImage,
     gridType,
     selectedTool,
@@ -168,6 +182,8 @@ function App() {
     setPermanentlyRevealed,
     setDoors,
     setWalls,
+    setTexts,
+    setLoots,
     setBackgroundImage,
     setGridType,
     setSelectedTool,
@@ -175,7 +191,7 @@ function App() {
     setFogEnabled,
     isInSession: isInMultiplayerSession,
     isGM: isGameMaster,
-  }), [tokens, drawingData, fogOfWar, permanentlyRevealed, doors, walls, backgroundImage, gridType, selectedTool, selectedColor, fogEnabled, isInMultiplayerSession, isGameMaster]);
+  }), [tokens, drawingData, fogOfWar, permanentlyRevealed, doors, walls, texts, loots, backgroundImage, gridType, selectedTool, selectedColor, fogEnabled, isInMultiplayerSession, isGameMaster]);
   
   const multiplayerSync = useMultiplayerSync(multiplayerSyncProps);
 
@@ -219,8 +235,8 @@ function App() {
     const newToken = {
       id: `token-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       type,
-      x: tokenData.x || Math.floor(Math.random() * 40),
-      y: tokenData.y || Math.floor(Math.random() * 40),
+      x: tokenData.x !== undefined ? tokenData.x : 20, // Centro de la grilla (40x40)
+      y: tokenData.y !== undefined ? tokenData.y : 20, // Centro de la grilla (40x40)
       color: tokenData.color || (type === "ally" ? "#3498db" : type === "enemy" ? "#e74c3c" : "#f1c40f"),
       name: tokenData.name || "",
       initiative: tokenData.initiative || undefined,
@@ -473,9 +489,152 @@ function App() {
     multiplayerSync.syncDiceRoll(diceRollData);
   };
   
-  const handleSelectedToolChange = (tool: "move" | "draw" | "erase" | "fill" | "square" | "fog" | "door-h" | "door-v" | "wall-h" | "wall-v") => {
+  const handleSelectedToolChange = (tool: "move" | "draw" | "erase" | "fill" | "square" | "fog" | "door-h" | "door-v" | "wall-h" | "wall-v" | "text" | "loot") => {
     setSelectedTool(tool);
     // NO sincronizar herramientas - cada jugador mantiene su propia selección
+  };
+  
+  // Funciones para manejar textos
+  const handleTextSave = (textData: TextData) => {
+    if (editingText) {
+      setTexts(texts.map(t => t.id === textData.id ? textData : t));
+    } else {
+      if (pendingTextPosition) {
+        textData.x = pendingTextPosition.x;
+        textData.y = pendingTextPosition.y;
+      }
+      setTexts([...texts, textData]);
+    }
+    setEditingText(undefined);
+    setPendingTextPosition(null);
+  };
+  
+  const handleTextEdit = (textData: TextData) => {
+    setEditingText(textData);
+    setShowTextModal(true);
+  };
+  
+  const handleTextDelete = (id: string) => {
+    setTexts(texts.filter(t => t.id !== id));
+  };
+  
+  // Funciones para manejar botín
+  const handleLootSave = (lootData: LootData) => {
+    if (editingLoot) {
+      setLoots(loots.map(l => l.id === lootData.id ? lootData : l));
+    } else {
+      if (pendingLootPosition) {
+        lootData.x = pendingLootPosition.x;
+        lootData.y = pendingLootPosition.y;
+      }
+      setLoots([...loots, lootData]);
+    }
+    setEditingLoot(undefined);
+    setPendingLootPosition(null);
+  };
+  
+  const handleLootEdit = (lootData: LootData) => {
+    setEditingLoot(lootData);
+    setShowLootModal(true);
+  };
+  
+  const handleLootDelete = (id: string) => {
+    setLoots(loots.filter(l => l.id !== id));
+  };
+  
+  // Funciones de limpieza
+  const clearTexts = () => {
+    setTexts([]);
+  };
+  
+  const clearLoots = () => {
+    setLoots([]);
+  };
+  
+  const clearAll = () => {
+    // Limpiar todo el contenido de la grilla
+    setDrawingData([]);
+    setTexts([]);
+    setLoots([]);
+    setDoors(new Map());
+    setWalls(new Map());
+    setFogOfWar(new Set());
+    setPermanentlyRevealed(new Set());
+  };
+  
+  // Función para borrar selectivamente una celda
+  const eraseCell = (gridX: number, gridY: number) => {
+    // Eliminar textos en esta posición
+    setTexts(texts.filter(text => 
+      Math.floor(text.x) !== gridX || Math.floor(text.y) !== gridY
+    ));
+    
+    // Eliminar botín en esta posición
+    setLoots(loots.filter(loot => 
+      Math.floor(loot.x) !== gridX || Math.floor(loot.y) !== gridY
+    ));
+    
+    // Eliminar puertas en esta posición
+    const newDoors = new Map(doors);
+    newDoors.delete(`${gridX}-${gridY}`);
+    setDoors(newDoors);
+    
+    // Eliminar muros en esta posición
+    const newWalls = new Map(walls);
+    newWalls.delete(`${gridX}-${gridY}`);
+    setWalls(newWalls);
+    
+    // Eliminar dibujos que intersecten con esta celda
+    const CELL_SIZE = 40;
+    const cellLeft = gridX * CELL_SIZE;
+    const cellTop = gridY * CELL_SIZE;
+    const cellRight = cellLeft + CELL_SIZE;
+    const cellBottom = cellTop + CELL_SIZE;
+    
+    setDrawingData(drawingData.filter(drawing => {
+      if (drawing.type === 'fill') {
+        // Para rellenos, verificar si el punto está en la celda
+        const [x, y] = drawing.points;
+        return !(x >= cellLeft && x < cellRight && y >= cellTop && y < cellBottom);
+      } else {
+        // Para líneas y cuadrados, verificar si algún punto intersecta
+        for (let i = 0; i < drawing.points.length; i += 2) {
+          const x = drawing.points[i];
+          const y = drawing.points[i + 1];
+          if (x >= cellLeft && x < cellRight && y >= cellTop && y < cellBottom) {
+            return false; // Eliminar este dibujo
+          }
+        }
+        return true; // Mantener este dibujo
+      }
+    }));
+    
+    // Sincronizar con multijugador
+    multiplayerSync.syncGameState({
+      texts: texts.filter(text => 
+        Math.floor(text.x) !== gridX || Math.floor(text.y) !== gridY
+      ),
+      loots: loots.filter(loot => 
+        Math.floor(loot.x) !== gridX || Math.floor(loot.y) !== gridY
+      ),
+      doors: newDoors,
+      walls: newWalls,
+      drawingData: drawingData.filter(drawing => {
+        if (drawing.type === 'fill') {
+          const [x, y] = drawing.points;
+          return !(x >= cellLeft && x < cellRight && y >= cellTop && y < cellBottom);
+        } else {
+          for (let i = 0; i < drawing.points.length; i += 2) {
+            const x = drawing.points[i];
+            const y = drawing.points[i + 1];
+            if (x >= cellLeft && x < cellRight && y >= cellTop && y < cellBottom) {
+              return false;
+            }
+          }
+          return true;
+        }
+      })
+    });
   };
   
   const handleSelectedColorChange = (color: string) => {
@@ -532,10 +691,25 @@ function App() {
               onFogToggle={handleFogToggle}
               fogEnabled={fogEnabled}
               doors={doors}
-                onDoorToggle={handleDoorToggle}
-                walls={walls}
-                onWallToggle={handleWallToggle}
-              />
+              onDoorToggle={handleDoorToggle}
+              walls={walls}
+              onWallToggle={handleWallToggle}
+              texts={texts}
+              onTextEdit={handleTextEdit}
+              onTextDelete={handleTextDelete}
+              loots={loots}
+              onLootEdit={handleLootEdit}
+              onLootDelete={handleLootDelete}
+              onTextPlace={(x, y) => {
+                setPendingTextPosition({x, y});
+                setShowTextModal(true);
+              }}
+              onLootPlace={(x, y) => {
+                setPendingLootPosition({x, y});
+                setShowLootModal(true);
+              }}
+              onEraseCell={eraseCell}
+            />
           </div>
         </div>
         
@@ -547,8 +721,35 @@ function App() {
           updateToken={updateToken}
           removeToken={removeToken}
         />
-      </div>
-    );
+        
+        {/* Text Edit Modal - También en fullscreen */}
+        <TextEditModal
+          isOpen={showTextModal}
+          onClose={() => {
+            setShowTextModal(false);
+            setEditingText(undefined);
+            setPendingTextPosition(null);
+          }}
+          onSave={handleTextSave}
+          initialData={editingText}
+        />
+        
+        {/* Loot Edit Modal - También en fullscreen */}
+         <LootEditModal
+           isOpen={showLootModal}
+           onClose={() => {
+             setShowLootModal(false);
+             setEditingLoot(undefined);
+             setPendingLootPosition(null);
+           }}
+           onSave={handleLootSave}
+           initialData={editingLoot}
+         />
+         
+         {/* Initiative List Flotante - También en fullscreen */}
+         <InitiativeList tokens={tokens} />
+       </div>
+     );
   }
 
   return (
@@ -561,10 +762,8 @@ function App() {
       </header>
 
       <main className="flex-grow flex flex-col lg:flex-row p-2 md:p-4 gap-2 md:gap-4">
-        {/* Columna izquierda: Lista de iniciativa y dados */}
+        {/* Columna izquierda: Dados y controles */}
         <div className="w-full lg:w-1/4 flex flex-col gap-2 md:gap-4 order-2 lg:order-1">
-          <InitiativeList tokens={tokens} />{" "}
-          {/* Mostrar la lista de iniciativa */}
           <DiceRoller onResult={handleDiceRoll} /> {/* Mostrar el lanzador de dados */}
           
           {/* Panel de Multijugador */}
@@ -666,6 +865,21 @@ function App() {
                 onDoorToggle={handleDoorToggle}
                 walls={walls}
                 onWallToggle={handleWallToggle}
+                texts={texts}
+                onTextEdit={handleTextEdit}
+                onTextDelete={handleTextDelete}
+                loots={loots}
+                onLootEdit={handleLootEdit}
+                onLootDelete={handleLootDelete}
+                onTextPlace={(x, y) => {
+                  setPendingTextPosition({x, y});
+                  setShowTextModal(true);
+                }}
+                onLootPlace={(x, y) => {
+                  setPendingLootPosition({x, y});
+                  setShowLootModal(true);
+                }}
+                onEraseCell={eraseCell}
               />
             </div>
           </div>
@@ -675,12 +889,9 @@ function App() {
             setSelectedTool={handleSelectedToolChange}
             selectedColor={selectedColor}
             setSelectedColor={handleSelectedColorChange}
-            clearDrawing={clearDrawing}
             fogEnabled={fogEnabled}
             toggleFogOfWar={toggleFogOfWar}
-            clearFogOfWar={clearFogOfWar}
-            clearDoors={clearDoors}
-            clearWalls={clearWalls}
+            clearAll={clearAll}
           />
         </div>
       </main>
@@ -695,6 +906,33 @@ function App() {
         updateToken={updateToken}
         removeToken={removeToken}
       />
+      
+      {/* Text Edit Modal */}
+      <TextEditModal
+        isOpen={showTextModal}
+        onClose={() => {
+          setShowTextModal(false);
+          setEditingText(undefined);
+          setPendingTextPosition(null);
+        }}
+        onSave={handleTextSave}
+        initialData={editingText}
+      />
+      
+      {/* Loot Edit Modal */}
+      <LootEditModal
+        isOpen={showLootModal}
+        onClose={() => {
+          setShowLootModal(false);
+          setEditingLoot(undefined);
+          setPendingLootPosition(null);
+        }}
+        onSave={handleLootSave}
+        initialData={editingLoot}
+      />
+
+      {/* Initiative List Flotante */}
+      <InitiativeList tokens={tokens} />
 
       <footer
         className="p-4 text-center text-sm"

@@ -36,7 +36,6 @@ const DiceRoller: React.FC<{
         <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 bg-clip-text text-transparent mb-2">
           ✨ Dice Roller ✨
         </h2>
-        <div className="w-16 h-1 bg-gradient-to-r from-purple-500 to-pink-500 mx-auto rounded-full"></div>
       </div>
       <div className="grid grid-cols-3 gap-3">
         <button
