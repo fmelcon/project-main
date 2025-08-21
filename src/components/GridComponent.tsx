@@ -116,6 +116,12 @@ const GridComponent: React.FC<GridComponentProps> = ({
     x: number;
     y: number;
   } | null>(null);
+  
+  // Pan/drag states for grid navigation
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState<{ x: number; y: number } | null>(null);
+  const [panOffset, setPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [totalPanOffset, setTotalPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
   const GRID_SIZE = 40;
   
@@ -435,30 +441,72 @@ const GridComponent: React.FC<GridComponentProps> = ({
     const handleTouchStartNative = (e: TouchEvent) => {
       e.preventDefault(); // Prevenir scroll y zoom
       const rect = gridElement.getBoundingClientRect();
-      if (e.touches.length === 0) return;
       
-      const x = e.touches[0].clientX - rect.left;
-      const y = e.touches[0].clientY - rect.top;
-      handlePointerDown(x, y);
+      if (e.touches.length === 2) {
+        // Two finger touch - start panning
+        const x = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+        const y = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+        setIsPanning(true);
+        setPanStart({ x, y });
+        setPanOffset({ x: 0, y: 0 });
+      } else if (e.touches.length === 1) {
+        // Single finger touch - normal interaction
+        const x = e.touches[0].clientX - rect.left;
+        const y = e.touches[0].clientY - rect.top;
+        handlePointerDown(x, y);
+      }
     };
     
     const handleTouchMoveNative = (e: TouchEvent) => {
       e.preventDefault(); // Prevenir scroll
       const rect = gridElement.getBoundingClientRect();
-      if (e.touches.length === 0) return;
       
-      const x = e.touches[0].clientX - rect.left;
-      const y = e.touches[0].clientY - rect.top;
-      handlePointerMove(x, y);
+      if (e.touches.length === 2 && isPanning) {
+        // Two finger move - continue panning
+        const x = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+        const y = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+        if (panStart) {
+          const deltaX = x - panStart.x;
+          const deltaY = y - panStart.y;
+          setPanOffset({ x: deltaX, y: deltaY });
+        }
+      } else if (e.touches.length === 1 && !isPanning) {
+        // Single finger move - normal interaction
+        const x = e.touches[0].clientX - rect.left;
+        const y = e.touches[0].clientY - rect.top;
+        handlePointerMove(x, y);
+      }
     };
     
     const handleTouchEndNative = (e: TouchEvent) => {
       e.preventDefault();
-      handlePointerUp();
+      
+      if (e.touches.length === 0 && isPanning) {
+        // End panning when all fingers are lifted
+        setTotalPanOffset(prev => ({
+          x: prev.x + panOffset.x,
+          y: prev.y + panOffset.y
+        }));
+        setIsPanning(false);
+        setPanStart(null);
+        setPanOffset({ x: 0, y: 0 });
+      } else if (e.touches.length === 0) {
+        // Normal touch end
+        handlePointerUp();
+      }
     };
     
     const handleTouchCancelNative = (e: TouchEvent) => {
       e.preventDefault();
+      if (isPanning) {
+        setTotalPanOffset(prev => ({
+          x: prev.x + panOffset.x,
+          y: prev.y + panOffset.y
+        }));
+        setIsPanning(false);
+        setPanStart(null);
+        setPanOffset({ x: 0, y: 0 });
+      }
       handlePointerLeave();
     };
     
@@ -483,23 +531,58 @@ const GridComponent: React.FC<GridComponentProps> = ({
     handlePointerDown(coords.x, coords.y);
   };
   
+  // Function to check if clicking on any interactive element
+  const isClickingOnInteractiveElement = (x: number, y: number) => {
+    const gridX = Math.floor(x / CELL_SIZE);
+    const gridY = Math.floor(y / CELL_SIZE);
+    
+    // Check tokens
+    const clickedToken = tokens.find((token) => {
+      const tokenX = token.x * CELL_SIZE + CELL_SIZE / 2;
+      const tokenY = token.y * CELL_SIZE + CELL_SIZE / 2;
+      const distance = Math.sqrt(
+        Math.pow(tokenX - x, 2) + Math.pow(tokenY - y, 2)
+      );
+      return distance < CELL_SIZE / 2;
+    });
+    if (clickedToken) return { type: 'token', element: clickedToken };
+    
+    // Check walls
+    const wallKey = `${gridX},${gridY}`;
+    if (walls.has(wallKey)) {
+      return { type: 'wall', gridX, gridY };
+    }
+    
+    // Check doors
+    if (doors.has(wallKey)) {
+      return { type: 'door', gridX, gridY };
+    }
+    
+    // Check texts
+    const clickedText = texts.find(text => 
+      Math.floor(text.x) === gridX && Math.floor(text.y) === gridY
+    );
+    if (clickedText) return { type: 'text', element: clickedText };
+    
+    // Check loots
+    const clickedLoot = loots.find(loot => 
+      Math.floor(loot.x) === gridX && Math.floor(loot.y) === gridY
+    );
+    if (clickedLoot) return { type: 'loot', element: clickedLoot };
+    
+    return null;
+  };
+
   const handlePointerDown = (x: number, y: number) => {
+    const interactiveElement = isClickingOnInteractiveElement(x, y);
 
     if (selectedTool === "move") {
-      // Check if clicking on a token
-      const clickedToken = tokens.find((token) => {
-        const tokenX = token.x * CELL_SIZE + CELL_SIZE / 2;
-        const tokenY = token.y * CELL_SIZE + CELL_SIZE / 2;
-        const distance = Math.sqrt(
-          Math.pow(tokenX - x, 2) + Math.pow(tokenY - y, 2)
-        );
-        return distance < CELL_SIZE / 2;
-      });
-
-      if (clickedToken) {
+      if (interactiveElement?.type === 'token') {
         setIsDragging(true);
-        setDraggedToken(clickedToken.id);
+        setDraggedToken(interactiveElement.element.id);
       }
+      // Note: Panning is now only handled by two-finger touch gestures
+      // Single click/touch panning has been removed to avoid conflicts with token movement
     } else if (selectedTool === "wall-h" || selectedTool === "wall-v") {
       // Handle wall placement
       const gridX = Math.floor(x / CELL_SIZE);
@@ -591,8 +674,12 @@ const GridComponent: React.FC<GridComponentProps> = ({
   };
   
   const handlePointerMove = (x: number, y: number) => {
-
-    if (isDragging && draggedToken) {
+    if (isPanning && panStart) {
+      // Handle panning
+      const deltaX = x - panStart.x;
+      const deltaY = y - panStart.y;
+      setPanOffset({ x: deltaX, y: deltaY });
+    } else if (isDragging && draggedToken) {
       // Move token
       const gridX = Math.floor(x / CELL_SIZE);
       const gridY = Math.floor(y / CELL_SIZE);
@@ -624,6 +711,17 @@ const GridComponent: React.FC<GridComponentProps> = ({
   };
   
   const handlePointerUp = () => {
+    if (isPanning) {
+      // Finish panning and update total offset
+      setTotalPanOffset(prev => ({
+        x: prev.x + panOffset.x,
+        y: prev.y + panOffset.y
+      }));
+      setIsPanning(false);
+      setPanStart(null);
+      setPanOffset({ x: 0, y: 0 });
+    }
+    
     if (isDragging) {
       setIsDragging(false);
       setDraggedToken(null);
@@ -669,6 +767,17 @@ const GridComponent: React.FC<GridComponentProps> = ({
   };
   
   const handlePointerLeave = () => {
+    if (isPanning) {
+      // Finish panning when mouse leaves the area
+      setTotalPanOffset(prev => ({
+        x: prev.x + panOffset.x,
+        y: prev.y + panOffset.y
+      }));
+      setIsPanning(false);
+      setPanStart(null);
+      setPanOffset({ x: 0, y: 0 });
+    }
+    
     setIsDrawing(false);
     setCurrentPath([]);
     setSquareStart(null);
@@ -1165,6 +1274,12 @@ const GridComponent: React.FC<GridComponentProps> = ({
     });
   };
 
+  // Calculate current transform
+  const currentTransform = {
+    x: totalPanOffset.x + panOffset.x,
+    y: totalPanOffset.y + panOffset.y
+  };
+
   return (
     <div
       ref={gridRef}
@@ -1174,11 +1289,8 @@ const GridComponent: React.FC<GridComponentProps> = ({
         maxWidth: "100vw",
         maxHeight: "70vh",
         position: "relative",
-        backgroundImage: backgroundImage ? `url(${backgroundImage})` : "none",
-        backgroundSize: "cover",
-        backgroundPosition: "center",
         margin: "0 auto",
-        cursor: selectedTool === "move" ? "default" : "crosshair",
+        cursor: isPanning ? "grabbing" : (selectedTool === "move" ? "default" : "crosshair"),
         overflow: "hidden",
         border: "2px solid #4a5568",
         borderRadius: "8px",
@@ -1192,6 +1304,19 @@ const GridComponent: React.FC<GridComponentProps> = ({
       onTouchEnd={handleTouchEnd}
       onTouchCancel={handleTouchCancel}
     >
+      {/* Pannable content container */}
+      <div
+        style={{
+          width: `${GRID_WIDTH}px`,
+          height: `${GRID_HEIGHT}px`,
+          position: "relative",
+          backgroundImage: backgroundImage ? `url(${backgroundImage})` : "none",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          transform: `translate(${currentTransform.x}px, ${currentTransform.y}px)`,
+          transition: isPanning ? "none" : "transform 0.1s ease-out",
+        }}
+      >
       {/* Background layer */}
       {!backgroundImage && (
         <div
@@ -1371,7 +1496,8 @@ const GridComponent: React.FC<GridComponentProps> = ({
           onClick={hideContextMenu}
         />
       )}
-      
+      </div>
+      {/* End of pannable content container */}
 
       
       {/* Floating Token Buttons */}
