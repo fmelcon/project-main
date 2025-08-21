@@ -8,6 +8,7 @@ import { LootData } from "./LootEditModal";
 interface GridComponentProps {
   gridType: "square" | "octagonal";
   backgroundImage: string | null;
+  zoomLevel?: number;
   tokens: Array<{
     id: string;
     name?: string;
@@ -73,6 +74,7 @@ const getContrastColor = (hexcolor: string): string => {
 const GridComponent: React.FC<GridComponentProps> = ({
   gridType,
   backgroundImage,
+  zoomLevel = 1,
   tokens,
   drawingData,
   selectedTool,
@@ -117,23 +119,26 @@ const GridComponent: React.FC<GridComponentProps> = ({
 
   const GRID_SIZE = 40;
   
-  // Responsive cell size based on viewport
+  // Responsive cell size based on viewport and zoom level
   const getResponsiveCellSize = () => {
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
     
+    let baseSize;
     // Mobile phones (portrait)
     if (viewportWidth < 768) {
-      return Math.min(20, (viewportWidth - 40) / GRID_SIZE);
+      baseSize = Math.min(20, (viewportWidth - 40) / GRID_SIZE);
     }
     // Tablets (portrait)
     else if (viewportWidth < 1024) {
-      return Math.min(25, (viewportWidth - 100) / GRID_SIZE);
+      baseSize = Math.min(25, (viewportWidth - 100) / GRID_SIZE);
     }
     // Desktop
     else {
-      return 30;
+      baseSize = 30;
     }
+    
+    return baseSize * zoomLevel;
   };
   
   const [cellSize, setCellSize] = useState(getResponsiveCellSize());
@@ -141,7 +146,7 @@ const GridComponent: React.FC<GridComponentProps> = ({
   const GRID_WIDTH = GRID_SIZE * CELL_SIZE;
   const GRID_HEIGHT = GRID_SIZE * CELL_SIZE;
   
-  // Update cell size on window resize
+  // Update cell size on window resize or zoom change
   useEffect(() => {
     const handleResize = () => {
       setCellSize(getResponsiveCellSize());
@@ -149,7 +154,12 @@ const GridComponent: React.FC<GridComponentProps> = ({
     
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  }, [zoomLevel]);
+
+  // Update cell size when zoom level changes
+  useEffect(() => {
+    setCellSize(getResponsiveCellSize());
+  }, [zoomLevel]);
 
   // Draw the canvas elements (lines, shapes, etc.)
   useEffect(() => {

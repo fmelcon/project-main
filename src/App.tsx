@@ -58,6 +58,7 @@ function App() {
   const [selectedTool, setSelectedTool] = useState<
     "move" | "draw" | "erase" | "fill" | "square" | "fog" | "door-h" | "door-v" | "wall-h" | "wall-v" | "text" | "loot"
   >("move");
+  const [zoomLevel, setZoomLevel] = useState<number>(1);
   const [selectedColor, setSelectedColor] = useState<string>("#ff0000");
   const [drawingData, setDrawingData] = useState<
     Array<{ type: string; points: number[]; color: string }>
@@ -561,6 +562,19 @@ function App() {
     setFogOfWar(new Set());
     setPermanentlyRevealed(new Set());
   };
+
+  // Funciones de zoom
+  const handleZoomIn = () => {
+    setZoomLevel(prev => Math.min(prev + 0.25, 3)); // Máximo 3x
+  };
+
+  const handleZoomOut = () => {
+    setZoomLevel(prev => Math.max(prev - 0.25, 0.5)); // Mínimo 0.5x
+  };
+
+  const resetZoom = () => {
+    setZoomLevel(1);
+  };
   
   // Función para borrar selectivamente una celda
   const eraseCell = (gridX: number, gridY: number) => {
@@ -661,6 +675,7 @@ function App() {
             <GridComponent
               gridType={gridType}
               backgroundImage={backgroundImage}
+              zoomLevel={zoomLevel}
               tokens={tokens}
               drawingData={drawingData}
               selectedTool={selectedTool}
@@ -781,8 +796,8 @@ function App() {
             className="p-2 md:p-4 rounded-lg shadow-lg"
             style={{ background: "linear-gradient(145deg, #1a1a1a, #2d2d2d)" }}
           >
-            <div className="flex justify-between items-center mb-4">
-              <div className="flex gap-2">
+            <div className="flex justify-between items-start mb-4">
+              <div className="flex gap-2 flex-wrap">
                 <button
                   className={`px-3 py-1 rounded ${
                     gridType === "square" ? "bg-purple-600" : "bg-gray-700"
@@ -813,6 +828,32 @@ function App() {
                 >
                   <Upload size={16} /> Upload Map
                 </button>
+                <div className="flex items-center gap-1 bg-gray-700 rounded px-2 py-1">
+                  <button
+                    className="bg-orange-600 hover:bg-orange-700 px-2 py-1 rounded flex items-center transition-all"
+                    onClick={handleZoomOut}
+                    title="Zoom Out"
+                  >
+                    <Minus size={14} />
+                  </button>
+                  <span className="text-white text-sm font-medium min-w-[3rem] text-center">
+                    {Math.round(zoomLevel * 100)}%
+                  </span>
+                  <button
+                    className="bg-orange-600 hover:bg-orange-700 px-2 py-1 rounded flex items-center transition-all"
+                    onClick={handleZoomIn}
+                    title="Zoom In"
+                  >
+                    <Plus size={14} />
+                  </button>
+                  <button
+                    className="bg-gray-600 hover:bg-gray-500 px-2 py-1 rounded text-xs transition-all"
+                    onClick={resetZoom}
+                    title="Reset Zoom"
+                  >
+                    1:1
+                  </button>
+                </div>
                 <button
                   className="bg-green-600 hover:bg-green-700 px-3 py-1 rounded flex items-center gap-1 transition-all"
                   onClick={toggleFullscreen}
@@ -834,6 +875,7 @@ function App() {
               <GridComponent
                 gridType={gridType}
                 backgroundImage={backgroundImage}
+                zoomLevel={zoomLevel}
                 tokens={tokens}
                 drawingData={drawingData}
                 selectedTool={selectedTool}
