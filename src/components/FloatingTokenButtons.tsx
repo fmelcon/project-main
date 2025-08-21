@@ -13,7 +13,7 @@ const FloatingTokenButtons: React.FC<FloatingTokenButtonsProps> = ({ onAddAlly, 
   const touchHandledRefBoss = useRef(false);
 
   return (
-    <div className="fixed right-4 top-4 z-40 flex flex-col gap-2">
+    <div className="fixed right-4 top-12 z-40 flex flex-col gap-2">
       {/* Add Ally Button */}
       <button
         onClick={(e) => {
