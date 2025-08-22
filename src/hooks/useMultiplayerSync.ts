@@ -53,6 +53,7 @@ interface SyncMethods {
   
   // Métodos de sincronización para fog of war
   syncUpdateFog: (fogData: Set<string>) => void;
+  syncFogToggle: (x: number, y: number) => void;
   
   // Métodos de sincronización para elementos arquitectónicos
   syncUpdateDoor: (doorKey: string, doorData: any) => void;
@@ -131,7 +132,7 @@ export const useMultiplayerSync = ({
   // Debounce para evitar spam de actualizaciones
   const debounceTimers = useRef<{ [key: string]: NodeJS.Timeout }>({});
   
-  const debounce = (key: string, fn: () => void, delay: number = 100) => {
+  const debounce = (key: string, fn: () => void, delay: number = 50) => {
     if (debounceTimers.current[key]) {
       clearTimeout(debounceTimers.current[key]);
     }
@@ -163,17 +164,11 @@ export const useMultiplayerSync = ({
   
   // Aplicar actualizaciones remotas (sin dependencias para evitar loops)
   const applyRemoteUpdate = useCallback((update: GameUpdate) => {
-    console.log('🔍 DEBUG: applyRemoteUpdate called with:', update.type);
-    console.log('🔍 DEBUG: isApplyingRemoteUpdate.current:', isApplyingRemoteUpdate.current);
-    
     if (isApplyingRemoteUpdate.current) {
-      console.log('❌ DEBUG: Blocked by isApplyingRemoteUpdate flag');
       return;
     }
     
-    console.log('🔄 Applying remote update:', update.type, update.data);
     isApplyingRemoteUpdate.current = true;
-    console.log('🔍 DEBUG: Set isApplyingRemoteUpdate.current to true');
     
     try {
       switch (update.type) {
@@ -403,16 +398,13 @@ export const useMultiplayerSync = ({
   
   // Métodos de sincronización
   const syncAddToken = useCallback((token: any) => {
-    console.log('🔥 syncAddToken called:', token, { isInSession, canModify: canModify('tokens') });
     if (!isInSession || !canModify('tokens')) {
-      console.log('❌ syncAddToken blocked:', { isInSession, canModify: canModify('tokens') });
       return;
     }
     
     debounce(`token_add_${token.id}`, () => {
-      console.log('🚀 Calling multiplayerService.syncTokenAdd:', token);
       multiplayerService.syncTokenAdd(token);
-    });
+    }, 25); // Más rápido para tokens
   }, [isInSession, canModify]);
   
   const syncUpdateToken = useCallback((tokenId: string, updates: any) => {
@@ -420,7 +412,7 @@ export const useMultiplayerSync = ({
     
     debounce(`token_update_${tokenId}`, () => {
       multiplayerService.syncTokenUpdate(tokenId, updates);
-    });
+    }, 20); // Muy rápido para movimiento de tokens
   }, [isInSession]);
   
   const syncRemoveToken = useCallback((tokenId: string) => {
@@ -434,7 +426,7 @@ export const useMultiplayerSync = ({
     
     debounce('drawing_add', () => {
       multiplayerService.syncDrawingAdd(drawing);
-    }, 50); // Más rápido para dibujos
+    }, 30); // Optimizado para dibujos en tiempo real
   }, [isInSession]);
   
   const syncClearDrawings = useCallback(() => {
@@ -448,7 +440,14 @@ export const useMultiplayerSync = ({
     
     debounce('fog_update', () => {
       multiplayerService.syncFogUpdate(Array.from(fogData));
-    }, 200);
+    }, 25); // Muy rápido para niebla de guerra
+  }, [isInSession, canModify]);
+  
+  const syncFogToggle = useCallback((x: number, y: number) => {
+    if (!isInSession || isApplyingRemoteUpdate.current || !canModify('fog')) return;
+    
+    // Toggle inmediato sin debounce para mejor responsividad
+    multiplayerService.syncFogToggle(x, y);
   }, [isInSession, canModify]);
   
   const syncUpdateDoor = useCallback((doorKey: string, doorData: any) => {
@@ -595,6 +594,7 @@ export const useMultiplayerSync = ({
     syncAddDrawing,
     syncClearDrawings,
     syncUpdateFog,
+    syncFogToggle,
     syncUpdateDoor,
     syncUpdateWall,
     syncClearDoors,

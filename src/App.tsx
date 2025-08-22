@@ -375,7 +375,7 @@ function App() {
     setZoomLevel(1);
   };
 
-  // Función para revelar área alrededor de tokens aliados
+  // Función para revelar área alrededor de tokens aliados (optimizada)
   const revealAroundAllies = useCallback(() => {
     if (!fogEnabled) return;
     
@@ -411,24 +411,19 @@ function App() {
       setFogOfWar(newFogOfWar);
       setPermanentlyRevealed(newPermanentlyRevealed);
       
-      // Sincronizar con multijugador (solo para jugadores)
+      // Sincronizar con multijugador (solo para jugadores) - inmediato
       if (isInMultiplayerSession && !isGameMaster) {
         multiplayerSync.syncUpdateFog(Array.from(newFogOfWar));
       }
     }
   }, [fogOfWar, permanentlyRevealed, tokens, fogEnabled, isInMultiplayerSession, isGameMaster]);
   
-  // Ejecutar revelado automático cuando cambien los tokens, se habilite la niebla, o cambien las posiciones
-  useEffect(() => {
-    revealAroundAllies();
-  }, [revealAroundAllies]);
-  
-  // También ejecutar cuando se mueva un token
+  // Ejecutar revelado automático cuando cambien las posiciones de tokens (inmediato)
   useEffect(() => {
     if (fogEnabled) {
       revealAroundAllies();
     }
-  }, [tokens.map(t => `${t.x},${t.y}`).join('|'), fogEnabled]);
+  }, [tokens.map(t => `${t.x},${t.y}`).join('|'), fogEnabled, revealAroundAllies]);
 
   const handleFogToggle = (x: number, y: number) => {
     // Solo el GM puede manipular la niebla manualmente

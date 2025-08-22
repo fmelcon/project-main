@@ -171,6 +171,10 @@ class MultiplayerService {
     this.service.syncFogUpdate(fogData);
   }
 
+  syncFogToggle(x: number, y: number): void {
+    this.service.syncFogToggle(x, y);
+  }
+
   syncDoorUpdate(doorKey: string, doorData: any): void {
     this.service.syncDoorUpdate(doorKey, doorData);
   }

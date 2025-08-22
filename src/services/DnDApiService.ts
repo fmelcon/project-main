@@ -28,18 +28,43 @@ export type LootRarity = 'common' | 'uncommon' | 'rare' | 'very-rare' | 'legenda
 class DnDApiService {
   private baseUrl = 'https://www.dnd5eapi.co/api';
   private cache: Map<string, any> = new Map();
+  private lastRequestTime = 0;
+  private requestDelay = 200; // 200ms entre requests
 
-  // Cache para evitar múltiples llamadas a la API
-  private async fetchWithCache(url: string): Promise<any> {
+  // Cache para evitar múltiples llamadas a la API con rate limiting
+  private async fetchWithCache(url: string, retries = 3): Promise<any> {
     if (this.cache.has(url)) {
       return this.cache.get(url);
     }
 
+    // Rate limiting: esperar entre requests
+    const now = Date.now();
+    const timeSinceLastRequest = now - this.lastRequestTime;
+    if (timeSinceLastRequest < this.requestDelay) {
+      await new Promise(resolve => setTimeout(resolve, this.requestDelay - timeSinceLastRequest));
+    }
+    this.lastRequestTime = Date.now();
+
     try {
       const response = await fetch(url);
+      
+      if (response.status === 429) {
+        // Too Many Requests - implementar backoff exponencial
+        if (retries > 0) {
+          const backoffDelay = Math.pow(2, 4 - retries) * 1000; // 1s, 2s, 4s
+          console.warn(`Rate limited, retrying in ${backoffDelay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, backoffDelay));
+          return this.fetchWithCache(url, retries - 1);
+        } else {
+          console.error('Rate limit exceeded, using fallback');
+          return null;
+        }
+      }
+      
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
+      
       const data = await response.json();
       this.cache.set(url, data);
       return data;
@@ -123,12 +148,16 @@ class DnDApiService {
       if (targetRarity !== 'common') {
         items = await this.getMagicItems();
         
-        // Si tenemos items mágicos, obtener detalles de algunos aleatorios
+        // Si tenemos items mágicos, obtener detalles de algunos aleatorios (secuencialmente para evitar rate limit)
         if (items.length > 0) {
-          const randomItems = this.getRandomItems(items, 3);
-          const detailedItems = await Promise.all(
-            randomItems.map(item => this.getMagicItemDetails(item.index))
-          );
+          const randomItems = this.getRandomItems(items, 2); // Reducir a 2 items
+          const detailedItems = [];
+          
+          // Procesar secuencialmente para evitar rate limiting
+          for (const item of randomItems) {
+            const details = await this.getMagicItemDetails(item.index);
+            if (details) detailedItems.push(details);
+          }
           
           const validItems = detailedItems.filter(item => 
             item && this.mapRarity(item.rarity?.name) === targetRarity
@@ -152,10 +181,14 @@ class DnDApiService {
       // Fallback a equipos normales
       const equipment = await this.getAllEquipment();
       if (equipment.length > 0) {
-        const randomItems = this.getRandomItems(equipment, 5);
-        const detailedItems = await Promise.all(
-          randomItems.map(item => this.getItemDetails(item.index))
-        );
+        const randomItems = this.getRandomItems(equipment, 3); // Reducir a 3 items
+        const detailedItems = [];
+        
+        // Procesar secuencialmente para evitar rate limiting
+        for (const item of randomItems) {
+          const details = await this.getItemDetails(item.index);
+          if (details) detailedItems.push(details);
+        }
         
         const validItems = detailedItems.filter(item => item !== null);
         if (validItems.length > 0) {

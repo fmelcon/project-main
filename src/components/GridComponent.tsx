@@ -1179,6 +1179,18 @@ const GridComponent: React.FC<GridComponentProps> = ({
   // Render texts
   const renderTexts = () => {
     return texts.map((text) => {
+      // Verificar si el texto está oculto por fog of war
+      const textKey = `${Math.floor(text.x)}-${Math.floor(text.y)}`;
+      const isRevealed = fogEnabled ? !fogOfWar.has(textKey) : true;
+      
+      // Para jugadores (no GM), ocultar textos en niebla
+      if (fogEnabled && !isRevealed && !isGameMaster) {
+        return null;
+      }
+      
+      // Para GM, mostrar textos en niebla con opacidad reducida
+      const textOpacity = (fogEnabled && !isRevealed && isGameMaster) ? 0.4 : 1;
+      
       const textStyle: React.CSSProperties = {
         position: 'absolute',
         left: `${text.x * CELL_SIZE}px`,
@@ -1202,6 +1214,7 @@ const GridComponent: React.FC<GridComponentProps> = ({
         wordBreak: 'break-word',
         maxWidth: `${CELL_SIZE * 3}px`,
         boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+        opacity: textOpacity,
       };
 
       return (
