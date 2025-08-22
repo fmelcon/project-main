@@ -148,8 +148,8 @@ function App() {
     const newToken = {
       id: Date.now().toString(),
       type,
-      x: Math.floor(Math.random() * 20) + 10,
-      y: Math.floor(Math.random() * 20) + 10,
+      x: 2, // Posición fija en esquina superior izquierda
+      y: 2,
       color: colors[type],
       name: customData.name || `${type.charAt(0).toUpperCase() + type.slice(1)} ${tokens.filter(t => t.type === type).length + 1}`,
       initiative: customData.initiative || 0,

@@ -1390,7 +1390,7 @@ const GridComponent: React.FC<GridComponentProps> = ({
         position: "relative",
         margin: "0 auto",
         cursor: isPanning ? "grabbing" : (selectedTool === "move" ? "default" : "crosshair"),
-        overflow: "hidden",
+        overflow: "auto",
         border: "2px solid #4a5568",
         borderRadius: "8px",
       }}
