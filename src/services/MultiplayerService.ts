@@ -250,6 +250,11 @@ class MultiplayerService {
     this.service.syncLootRemove(lootId);
   }
 
+  syncClearAll(): void {
+    console.log('🧹 MultiplayerService.syncClearAll called, Service type:', this.serviceName);
+    this.service.syncClearAll();
+  }
+
   // Método de sincronización del estado completo del juego
   syncGameState(gameState: any): void {
     console.log('🎮 MultiplayerService: Syncing game state:', gameState);

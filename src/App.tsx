@@ -117,20 +117,44 @@ function App() {
 
   // Configuración de multijugador
   const multiplayerSync = useMultiplayerSync({
-    onGameUpdate: (update: GameUpdate) => {
-      console.log('Received game update:', update);
-      // Manejar actualizaciones del juego
-    },
-    onSessionStateChange: (isInSession: boolean, isGM: boolean) => {
-      setIsInMultiplayerSession(isInSession);
-      setIsGameMaster(isGM);
-    }
+    // Estados del juego
+    tokens,
+    drawingData,
+    fogOfWar,
+    doors,
+    walls,
+    texts,
+    loots,
+    backgroundImage,
+    gridType,
+    selectedTool,
+    selectedColor,
+    fogEnabled,
+    
+    // Setters del estado
+    setTokens,
+    setDrawingData,
+    setFogOfWar,
+    setDoors,
+    setWalls,
+    setTexts,
+    setLoots,
+    setBackgroundImage: (image: string | undefined) => setBackgroundImage(image || null),
+    setGridType,
+    setSelectedTool,
+    setSelectedColor,
+    setFogEnabled,
+    
+    // Configuración
+    isInSession: isInMultiplayerSession,
+    isGM: isGameMaster
   });
 
   const handleGameUpdate = useCallback((update: GameUpdate) => {
     console.log('Handling game update:', update);
-    // Procesar actualizaciones específicas del juego
-  }, []);
+    // Aplicar la actualización usando el hook
+    multiplayerSync.applyRemoteUpdate(update);
+  }, [multiplayerSync]);
 
   const handleSessionStateChange = useCallback((isInSession: boolean, isGM: boolean) => {
     setIsInMultiplayerSession(isInSession);
@@ -148,8 +172,8 @@ function App() {
     const newToken = {
       id: Date.now().toString(),
       type,
-      x: Math.floor(Math.random() * 20) + 10,
-      y: Math.floor(Math.random() * 20) + 10,
+      x: 2, // Posición fija en esquina superior izquierda
+      y: 2,
       color: colors[type],
       name: customData.name || `${type.charAt(0).toUpperCase() + type.slice(1)} ${tokens.filter(t => t.type === type).length + 1}`,
       initiative: customData.initiative || 0,
@@ -351,7 +375,67 @@ function App() {
     setZoomLevel(1);
   };
 
+  // Función para revelar área alrededor de tokens aliados
+  const revealAroundAllies = useCallback(() => {
+    if (!fogEnabled) return;
+    
+    const newFogOfWar = new Set(fogOfWar);
+    const newPermanentlyRevealed = new Set(permanentlyRevealed);
+    let hasChanges = false;
+    
+    // Revelar 2 casillas alrededor de cada token aliado (excluyendo esquinas)
+    tokens.filter(token => token.type === 'ally').forEach(ally => {
+      for (let dx = -2; dx <= 2; dx++) {
+        for (let dy = -2; dy <= 2; dy++) {
+          // Excluir las esquinas del cuadrado 5x5
+          const isCorner = (Math.abs(dx) === 2 && Math.abs(dy) === 2);
+          if (isCorner) continue;
+          
+          const x = ally.x + dx;
+          const y = ally.y + dy;
+          const key = `${x}-${y}`;
+          
+          // Solo revelar si está dentro de los límites de la grilla
+          if (x >= 0 && x < 40 && y >= 0 && y < 40) {
+            if (newFogOfWar.has(key)) {
+              newFogOfWar.delete(key);
+              newPermanentlyRevealed.add(key);
+              hasChanges = true;
+            }
+          }
+        }
+      }
+    });
+    
+    if (hasChanges) {
+      setFogOfWar(newFogOfWar);
+      setPermanentlyRevealed(newPermanentlyRevealed);
+      
+      // Sincronizar con multijugador (solo para jugadores)
+      if (isInMultiplayerSession && !isGameMaster) {
+        multiplayerSync.syncUpdateFog(Array.from(newFogOfWar));
+      }
+    }
+  }, [fogOfWar, permanentlyRevealed, tokens, fogEnabled, isInMultiplayerSession, isGameMaster]);
+  
+  // Ejecutar revelado automático cuando cambien los tokens, se habilite la niebla, o cambien las posiciones
+  useEffect(() => {
+    revealAroundAllies();
+  }, [revealAroundAllies]);
+  
+  // También ejecutar cuando se mueva un token
+  useEffect(() => {
+    if (fogEnabled) {
+      revealAroundAllies();
+    }
+  }, [tokens.map(t => `${t.x},${t.y}`).join('|'), fogEnabled]);
+
   const handleFogToggle = (x: number, y: number) => {
+    // Solo el GM puede manipular la niebla manualmente
+    if (!isGameMaster && isInMultiplayerSession) {
+      return;
+    }
+    
     const key = `${x}-${y}`;
     const newFogOfWar = new Set(fogOfWar);
     const newPermanentlyRevealed = new Set(permanentlyRevealed);
@@ -374,7 +458,36 @@ function App() {
   };
 
   const toggleFogOfWar = () => {
-    setFogEnabled(!fogEnabled);
+    const newFogEnabled = !fogEnabled;
+    setFogEnabled(newFogEnabled);
+    
+    // Si se está habilitando la niebla por primera vez, cubrir toda la grilla
+    if (newFogEnabled && fogOfWar.size === 0) {
+      const fullFog = new Set<string>();
+      for (let x = 0; x < 40; x++) {
+        for (let y = 0; y < 40; y++) {
+          const key = `${x}-${y}`;
+          // Solo agregar si no está permanentemente revelado
+          if (!permanentlyRevealed.has(key)) {
+            fullFog.add(key);
+          }
+        }
+      }
+      setFogOfWar(fullFog);
+      
+      // Revelar inmediatamente alrededor de tokens aliados
+      setTimeout(() => revealAroundAllies(), 100);
+    }
+    
+    // Si se está deshabilitando, limpiar la niebla
+    if (!newFogEnabled) {
+      setFogOfWar(new Set());
+    }
+    
+    // Sincronizar con multijugador
+    if (isInMultiplayerSession) {
+      multiplayerSync.syncUpdateFogEnabled(newFogEnabled);
+    }
   };
 
   const handleWallToggle = (x: number, y: number, type: 'horizontal' | 'vertical') => {
@@ -436,6 +549,120 @@ function App() {
     }
   };
 
+  const handleEraseCell = (gridX: number, gridY: number) => {
+    const key = `${gridX}-${gridY}`;
+    let hasChanges = false;
+    
+    // Borrar dibujos en esta celda
+    const newDrawingData = drawingData.filter(drawing => {
+      if (drawing.type === 'fill') {
+        const cellX = Math.floor(drawing.points[0] / 40); // CELL_SIZE = 40
+        const cellY = Math.floor(drawing.points[1] / 40);
+        return !(cellX === gridX && cellY === gridY);
+      }
+      return true;
+    });
+    
+    if (newDrawingData.length !== drawingData.length) {
+      setDrawingData(newDrawingData);
+      hasChanges = true;
+      
+      // Sincronizar borrado de dibujos
+      if (isInMultiplayerSession) {
+        multiplayerSync.syncClearDrawings();
+        newDrawingData.forEach(drawing => {
+          multiplayerSync.syncAddDrawing(drawing);
+        });
+      }
+    }
+    
+    // Borrar paredes
+    if (walls.has(key)) {
+      const newWalls = new Map(walls);
+      newWalls.delete(key);
+      setWalls(newWalls);
+      hasChanges = true;
+      
+      // Sincronizar con multijugador
+      if (isInMultiplayerSession) {
+        multiplayerSync.syncUpdateWall(key, null);
+      }
+    }
+    
+    // Borrar puertas
+    if (doors.has(key)) {
+      const newDoors = new Map(doors);
+      newDoors.delete(key);
+      setDoors(newDoors);
+      hasChanges = true;
+      
+      // Sincronizar con multijugador
+      if (isInMultiplayerSession) {
+        multiplayerSync.syncUpdateDoor(key, null);
+      }
+    }
+    
+    // Borrar textos
+    const textsToRemove = texts.filter(text => 
+      Math.floor(text.x) === gridX && Math.floor(text.y) === gridY
+    );
+    
+    if (textsToRemove.length > 0) {
+      const newTexts = texts.filter(text => 
+        !(Math.floor(text.x) === gridX && Math.floor(text.y) === gridY)
+      );
+      setTexts(newTexts);
+      hasChanges = true;
+      
+      // Sincronizar con multijugador
+      if (isInMultiplayerSession) {
+        textsToRemove.forEach(text => {
+          multiplayerSync.syncRemoveText(text.id);
+        });
+      }
+    }
+    
+    // Borrar tesoros
+    const lootsToRemove = loots.filter(loot => 
+      Math.floor(loot.x) === gridX && Math.floor(loot.y) === gridY
+    );
+    
+    if (lootsToRemove.length > 0) {
+      const newLoots = loots.filter(loot => 
+        !(Math.floor(loot.x) === gridX && Math.floor(loot.y) === gridY)
+      );
+      setLoots(newLoots);
+      hasChanges = true;
+      
+      // Sincronizar con multijugador
+      if (isInMultiplayerSession) {
+        lootsToRemove.forEach(loot => {
+          multiplayerSync.syncRemoveLoot(loot.id);
+        });
+      }
+    }
+    
+    // Borrar tokens
+    const tokensToRemove = tokens.filter(token => 
+      token.x === gridX && token.y === gridY
+    );
+    
+    if (tokensToRemove.length > 0) {
+      const newTokens = tokens.filter(token => 
+        !(token.x === gridX && token.y === gridY)
+      );
+      setTokens(newTokens);
+      hasChanges = true;
+      
+      // Sincronizar con multijugador
+      if (isInMultiplayerSession) {
+        tokensToRemove.forEach(token => {
+          multiplayerSync.syncRemoveToken(token.id);
+        });
+      }
+    }
+  };
+
   const clearAll = () => {
     setDrawingData([]);
     setFogOfWar(new Set());
@@ -492,6 +719,11 @@ function App() {
     if (editingLoot) {
       // Editando loot existente
       setLoots(loots.map(loot => loot.id === lootData.id ? lootData : loot));
+      
+      // Sincronizar con multijugador
+      if (isInMultiplayerSession) {
+        multiplayerSync.syncUpdateLoot(lootData.id, lootData);
+      }
     } else {
       // Creando nuevo loot
       const newLoot = {
@@ -500,6 +732,11 @@ function App() {
         y: lootPosition?.y || 0
       };
       setLoots([...loots, newLoot]);
+      
+      // Sincronizar con multijugador
+      if (isInMultiplayerSession) {
+        multiplayerSync.syncAddLoot(newLoot);
+      }
     }
     setShowLootModal(false);
     setEditingLoot(undefined);
@@ -508,6 +745,11 @@ function App() {
 
   const handleDrawing = (newDrawingData: { type: string; points: number[]; color: string }) => {
     setDrawingData([...drawingData, newDrawingData]);
+    
+    // Sincronizar con multijugador
+    if (isInMultiplayerSession) {
+      multiplayerSync.syncAddDrawing(newDrawingData);
+    }
   };
 
   // Generador de dungeons estilo "One Page Dungeon" con API de D&D 5e
@@ -952,9 +1194,32 @@ function App() {
     
     // Sincronizar con multijugador si está activo
     if (isInMultiplayerSession) {
-      console.log('🌐 Syncing with multiplayer...');
-      // Aquí iría la lógica de sincronización
-      console.log('🌐 Multiplayer sync complete!');
+      console.log('🌐 Syncing dungeon with multiplayer...');
+      
+      // Sincronizar paredes
+      newWalls.forEach((wallData, key) => {
+        multiplayerSync.syncUpdateWall(key, wallData);
+      });
+      
+      // Sincronizar puertas
+      newDoors.forEach((doorData, key) => {
+        multiplayerSync.syncUpdateDoor(key, doorData);
+      });
+      
+      // Sincronizar textos (números de habitaciones)
+      newTexts.forEach(text => {
+        multiplayerSync.syncAddText(text);
+      });
+      
+      // Sincronizar tesoros
+      newLoots.forEach(loot => {
+        multiplayerSync.syncAddLoot(loot);
+      });
+      
+      // Las anotaciones de habitaciones se sincronizan automáticamente
+      // como parte del estado local del generador de dungeons
+      
+      console.log('🌐 Dungeon multiplayer sync complete!');
     }
   };
 
@@ -1019,13 +1284,14 @@ function App() {
             onLootEdit={handleLootEdit}
             onTextDelete={handleTextDelete}
             onLootDelete={handleLootDelete}
-            onEraseCell={(gridX, gridY) => {}}
+            onEraseCell={handleEraseCell}
             onOpenTokenManager={() => setShowTokenManager(true)}
             onAddAlly={() => addToken('ally', {})}
             onAddEnemy={() => addToken('enemy', {})}
              onAddBoss={() => addToken('boss', {})}
              roomAnnotations={roomAnnotations}
              onToggleAnnotation={toggleAnnotationVisibility}
+             isGameMaster={isGameMaster}
           />
          </div>
 
@@ -1207,13 +1473,14 @@ function App() {
               onLootEdit={handleLootEdit}
               onTextDelete={handleTextDelete}
               onLootDelete={handleLootDelete}
-              onEraseCell={(gridX, gridY) => {}}
+              onEraseCell={handleEraseCell}
               onOpenTokenManager={() => setShowTokenManager(true)}
               onAddAlly={() => addToken('ally', {})}
                onAddEnemy={() => addToken('enemy', {})}
                onAddBoss={() => addToken('boss', {})}
                roomAnnotations={roomAnnotations}
                onToggleAnnotation={toggleAnnotationVisibility}
+               isGameMaster={isGameMaster}
              />
           </div>
 

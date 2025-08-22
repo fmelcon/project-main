@@ -62,7 +62,7 @@ export interface FirebaseGameState {
 }
 
 export interface FirebaseGameUpdate {
-  type: 'token_add' | 'token_update' | 'token_remove' | 'drawing_add' | 'drawing_clear' | 'fog_update' | 'door_update' | 'wall_update' | 'background_update' | 'grid_type_update' | 'dice_roll' | 'selected_tool_update' | 'selected_color_update' | 'token_sync_all' | 'drawing_sync_all' | 'doors_sync_all' | 'walls_sync_all' | 'text_add' | 'text_update' | 'text_remove' | 'loot_add' | 'loot_update' | 'loot_remove' | 'texts_sync_all' | 'loots_sync_all' | 'game_state';
+  type: 'token_add' | 'token_update' | 'token_remove' | 'drawing_add' | 'drawing_clear' | 'fog_update' | 'door_update' | 'wall_update' | 'background_update' | 'grid_type_update' | 'dice_roll' | 'selected_tool_update' | 'selected_color_update' | 'token_sync_all' | 'drawing_sync_all' | 'doors_sync_all' | 'walls_sync_all' | 'text_add' | 'text_update' | 'text_remove' | 'loot_add' | 'loot_update' | 'loot_remove' | 'texts_sync_all' | 'loots_sync_all' | 'game_state' | 'clear_all' | 'fog_enabled_update';
   data: any;
   playerId: string;
   timestamp: number;
@@ -840,6 +840,11 @@ class FirebaseService {
 
   syncLootRemove(lootId: string): void {
     this.sendGameUpdate({ type: 'loot_remove', data: { id: lootId } });
+  }
+
+  syncClearAll(): void {
+    console.log('🧹 FirebaseService.syncClearAll called, Session:', this.currentSessionId);
+    this.sendGameUpdate({ type: 'clear_all', data: {} });
   }
 
   // Método de sincronización del estado completo del juego

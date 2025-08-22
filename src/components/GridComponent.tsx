@@ -69,6 +69,7 @@ interface GridComponentProps {
     isVisible?: boolean;
   }>;
   onToggleAnnotation?: (annotationId: string) => void;
+  isGameMaster?: boolean;
 }
 
 const getContrastColor = (hexcolor: string): string => {
@@ -122,6 +123,7 @@ const GridComponent: React.FC<GridComponentProps> = ({
   onAddBoss,
   roomAnnotations = [],
   onToggleAnnotation,
+  isGameMaster = false,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
@@ -805,8 +807,8 @@ const GridComponent: React.FC<GridComponentProps> = ({
     for (let y = 0; y < GRID_SIZE; y++) {
       for (let x = 0; x < GRID_SIZE; x++) {
         const cellKey = `${x}-${y}`;
-        const isRevealed = fogEnabled && fogOfWar.has(cellKey);
-        const isFogged = fogEnabled && !isRevealed;
+        const isFogged = fogEnabled && fogOfWar.has(cellKey);
+        const isRevealed = fogEnabled && !isFogged;
         
         let backgroundColor = "transparent";
         if (isFogged) {
@@ -861,10 +863,15 @@ const GridComponent: React.FC<GridComponentProps> = ({
       
       // Verificar si la pared está oculta por fog of war
       const cellKey = `${x}-${y}`;
-      const isRevealed = fogEnabled ? fogOfWar.has(cellKey) : true;
-      if (fogEnabled && !isRevealed) {
-        return; // No renderizar pared si está oculta por niebla
+      const isRevealed = fogEnabled ? !fogOfWar.has(cellKey) : true;
+      
+      // Para jugadores (no GM), ocultar paredes en niebla
+      if (fogEnabled && !isRevealed && !isGameMaster) {
+        return;
       }
+      
+      // Para GM, mostrar paredes en niebla con opacidad reducida
+      const wallOpacity = (fogEnabled && !isRevealed && isGameMaster) ? 0.4 : 1;
       
       if (wall.type === 'horizontal') {
         // Pared horizontal en el borde superior de la celda
@@ -880,6 +887,7 @@ const GridComponent: React.FC<GridComponentProps> = ({
           cursor: 'pointer',
           border: '2px solid #654321',
           boxShadow: '0 2px 4px rgba(0,0,0,0.5)',
+          opacity: wallOpacity,
         };
         
         wallElements.push(
@@ -904,6 +912,7 @@ const GridComponent: React.FC<GridComponentProps> = ({
           cursor: 'pointer',
           border: '2px solid #654321',
           boxShadow: '0 2px 4px rgba(0,0,0,0.5)',
+          opacity: wallOpacity,
         };
         
         wallElements.push(
@@ -929,7 +938,7 @@ const GridComponent: React.FC<GridComponentProps> = ({
       
       // Verificar si la puerta está oculta por fog of war
       const cellKey = `${x}-${y}`;
-      const isRevealed = fogEnabled ? fogOfWar.has(cellKey) : true;
+      const isRevealed = fogEnabled ? !fogOfWar.has(cellKey) : true;
       if (fogEnabled && !isRevealed) {
         return; // No renderizar puerta si está oculta por niebla
       }
@@ -1010,12 +1019,16 @@ const GridComponent: React.FC<GridComponentProps> = ({
     return tokens.map((token) => {
       // Verificar si el token está en un área revelada cuando hay niebla de guerra
       const tokenKey = `${token.x}-${token.y}`;
-      const isRevealed = fogEnabled ? fogOfWar.has(tokenKey) : true;
+      const isRevealed = fogEnabled ? !fogOfWar.has(tokenKey) : true;
       
-      // Ocultar tokens enemigos y jefes si están en niebla de guerra
-      if (fogEnabled && !isRevealed && (token.type === "enemy" || token.type === "boss")) {
+      // Ocultar tokens enemigos y jefes si están en niebla de guerra (excepto para GM)
+      if (fogEnabled && !isRevealed && !isGameMaster && (token.type === "enemy" || token.type === "boss")) {
         return null;
       }
+      
+      // Para jugadores (no GM), aplicar opacidad a tokens en niebla
+      const isInFog = fogEnabled && !isRevealed && !isGameMaster;
+      const tokenOpacity = isInFog ? 0.3 : 1;
       
       const isBoss = token.type === "boss";
       const tokenSize = CELL_SIZE; // Todos los tokens tienen el mismo tamaño
@@ -1048,6 +1061,7 @@ const GridComponent: React.FC<GridComponentProps> = ({
         cursor: selectedTool === "move" ? "grab" : "default",
         pointerEvents: selectedTool === "move" ? "auto" : "none",
         textShadow: "1px 1px 2px rgba(0, 0, 0, 0.5)",
+        opacity: tokenOpacity,
       };
 
       if (isDragging && token.id === draggedToken) {

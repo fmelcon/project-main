@@ -85,6 +85,9 @@ interface SyncMethods {
   // Método de sincronización para fog enabled
   syncUpdateFogEnabled: (enabled: boolean) => void;
   
+  // Limpiar todo
+  syncClearAll: () => void;
+  
   // Método para aplicar updates remotos
   applyRemoteUpdate: (update: any) => void;
   
@@ -295,6 +298,17 @@ export const useMultiplayerSync = ({
           
         case 'fog_enabled_update':
           setFogEnabled(update.data.fogEnabled);
+          break;
+          
+        case 'clear_all':
+          // Limpiar todo el estado del juego
+          setTokens([]);
+          setDrawingData([]);
+          setFogOfWar(new Set());
+          setDoors(new Map());
+          setWalls(new Map());
+          setTexts([]);
+          setLoots([]);
           break;
           
         case 'doors_clear':
@@ -556,6 +570,14 @@ export const useMultiplayerSync = ({
     console.log('🎮 Syncing game state:', gameState);
     multiplayerService.syncGameState(gameState);
   }, [isInSession]);
+
+  // Método para limpiar todo
+  const syncClearAll = useCallback(() => {
+    if (!isInSession || isApplyingRemoteUpdate.current || !canModify()) return;
+    
+    console.log('🧹 Syncing clear all');
+    multiplayerService.syncClearAll();
+  }, [isInSession, canModify]);
   
   // Cleanup de timers al desmontar
   useEffect(() => {
@@ -590,6 +612,7 @@ export const useMultiplayerSync = ({
     syncUpdateSelectedTool,
     syncUpdateSelectedColor,
     syncUpdateFogEnabled,
+    syncClearAll,
     applyRemoteUpdate,
     canModify,
   };
